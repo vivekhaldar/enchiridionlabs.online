@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enchiridion Labs — Infrastructure for AI Agents</title>
+<meta name="description" content="Building the foundational tools that let AI agents access data, follow procedures, and deliver results through generated interfaces.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   ENCHIRIDION LABS — DESIGN TOKENS
+   ================================================================ */
+:root {
+  --bg: #0a0b0f;
+  --bg-warm: #0d0e13;
+  --surface: #131419;
+  --surface-hover: #1a1b22;
+  --surface-border: rgba(240, 237, 232, 0.06);
+  --surface-border-hover: rgba(0, 181, 154, 0.25);
+
+  --text: #f0ede8;
+  --text-secondary: #b0ada6;
+  --text-muted: #6a6875;
+  --text-faint: #3d3c45;
+
+  --jade: #00B59A;
+  --jade-dim: rgba(0, 181, 154, 0.12);
+  --jade-glow: rgba(0, 181, 154, 0.08);
+  --amber: #E7A23D;
+  --amber-dim: rgba(231, 162, 61, 0.12);
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'Sora', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+  --space-3xl: 10rem;
+
+  --max-w: 1140px;
+  --max-w-narrow: 780px;
+
+  --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ================================================================
+   RESET & BASE
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--jade);
+  color: var(--bg);
+}
+
+a {
+  color: var(--jade);
+  text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+a:hover { color: var(--text); }
+
+img { max-width: 100%; display: block; }
+
+/* ================================================================
+   NOISE OVERLAY
+   ================================================================ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.018;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ================================================================
+   LAYOUT
+   ================================================================ */
+.wrap {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.wrap--narrow {
+  max-width: var(--max-w-narrow);
+}
+
+section {
+  padding: var(--space-3xl) 0;
+  position: relative;
+}
+
+/* ================================================================
+   SECTION LABELS
+   ================================================================ */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--surface-border) 0%, transparent 100%);
+  max-width: 200px;
+}
+
+/* ================================================================
+   SECTION TITLES
+   ================================================================ */
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-md);
+  color: var(--text);
+}
+
+.section-subtitle {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+/* ================================================================
+   SCROLL ANIMATIONS
+   ================================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ================================================================
+   NAVIGATION
+   ================================================================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: var(--space-sm) 0;
+  background: rgba(10, 11, 15, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--surface-border);
+  transform: translateY(-100%);
+  transition: transform 0.4s var(--ease-out);
+}
+
+.nav.visible {
+  transform: translateY(0);
+}
+
+.nav-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-logo {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--space-md);
+  list-style: none;
+}
+
+.nav-links a {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color 0.2s var(--ease);
+}
+
+.nav-links a:hover {
+  color: var(--jade);
+}
+
+/* ================================================================
+   HERO
+   ================================================================ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  padding: var(--space-3xl) 0;
+  overflow: hidden;
+}
+
+/* Animated grid background */
+.hero-grid {
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(rgba(0, 181, 154, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 181, 154, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridDrift 30s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes gridDrift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(60px, 60px) rotate(0.5deg); }
+}
+
+.hero-grid-fade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 0%, var(--bg) 70%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: var(--space-lg);
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out) 0.2s forwards;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(3.2rem, 8vw, 6.5rem);
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--space-md);
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out) 0.4s forwards;
+}
+
+.hero-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  max-width: 680px;
+  margin-bottom: var(--space-lg);
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out) 0.6s forwards;
+}
+
+.hero-desc {
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  max-width: 560px;
+  line-height: 1.75;
+  margin-bottom: var(--space-xl);
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out) 0.8s forwards;
+}
+
+.hero-nav {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  list-style: none;
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out) 1s forwards;
+}
+
+.hero-nav a {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid transparent;
+  transition: all 0.25s var(--ease);
+}
+
+.hero-nav a:hover {
+  color: var(--jade);
+  border-bottom-color: var(--jade);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ================================================================
+   THESIS (THREE ABSTRACTIONS)
+   ================================================================ */
+.thesis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin: var(--space-xl) 0;
+}
+
+.thesis-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  position: relative;
+  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.thesis-card:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 0 40px var(--jade-glow);
+}
+
+.thesis-card-number {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: var(--space-md);
+}
+
+.thesis-card-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-bottom: var(--space-sm);
+}
+
+.thesis-card-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+.thesis-card-desc {
+  font-size: 0.88rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.thesis-connector {
+  text-align: center;
+  margin: var(--space-xl) 0 var(--space-lg);
+  position: relative;
+}
+
+.thesis-connector::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--surface-border), transparent);
+}
+
+.thesis-summary {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.35rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--bg);
+  padding: 0 var(--space-lg);
+}
+
+.thesis-link {
+  display: block;
+  text-align: center;
+  margin-top: var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.thesis-link a {
+  color: var(--jade);
+  border-bottom: 1px solid rgba(0, 181, 154, 0.3);
+  padding-bottom: 2px;
+  transition: border-color 0.2s var(--ease);
+}
+
+.thesis-link a:hover {
+  border-bottom-color: var(--jade);
+  color: var(--text);
+}
+
+/* ================================================================
+   PRODUCTS
+   ================================================================ */
+.products-grid {
+  display: grid;
+  gap: var(--space-lg);
+  margin-top: var(--space-xl);
+}
+
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: var(--space-xl);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+  transition: border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+
+.product-card:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 8px 60px var(--jade-glow);
+}
+
+.product-meta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.product-meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jade);
+}
+
+.product-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  line-height: 1.1;
+  margin-bottom: var(--space-xs);
+  letter-spacing: -0.01em;
+}
+
+.product-pitch {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--amber);
+  margin-bottom: var(--space-md);
+}
+
+.product-desc {
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-bottom: var(--space-md);
+}
+
+.product-features {
+  list-style: none;
+  margin-bottom: var(--space-md);
+}
+
+.product-features li {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid rgba(240, 237, 232, 0.03);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.product-features li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--jade);
+  flex-shrink: 0;
+  transform: translateY(-1px);
+}
+
+.product-link {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--jade);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(0, 181, 154, 0.3);
+  padding-bottom: 2px;
+  transition: all 0.2s var(--ease);
+}
+
+.product-link:hover {
+  border-bottom-color: var(--jade);
+  color: var(--text);
+}
+
+.product-link-arrow {
+  transition: transform 0.2s var(--ease);
+}
+.product-link:hover .product-link-arrow {
+  transform: translateX(3px);
+}
+
+/* Product right column — code preview */
+.product-preview {
+  background: var(--bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+  overflow-x: auto;
+  position: relative;
+  white-space: pre;
+  align-self: start;
+}
+
+.product-preview::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--jade), var(--amber), transparent);
+  border-radius: 6px 6px 0 0;
+}
+
+.product-preview .cmd { color: var(--jade); }
+.product-preview .flag { color: var(--amber); }
+.product-preview .str { color: var(--text-secondary); }
+.product-preview .pipe { color: var(--text-muted); font-weight: 500; }
+.product-preview .comment { color: var(--text-faint); font-style: italic; }
+.product-preview .keyword { color: var(--amber); }
+.product-preview .label { color: var(--jade); font-weight: 500; }
+
+/* ================================================================
+   STACK DIAGRAM
+   ================================================================ */
+#stack {
+  background: var(--bg-warm);
+  border-top: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.stack-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-top: var(--space-xl);
+  padding: var(--space-lg) 0;
+}
+
+.stack-layer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: 640px;
+  position: relative;
+}
+
+.stack-node {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: var(--space-md) var(--space-lg);
+  text-align: center;
+  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.stack-node:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 0 30px var(--jade-glow);
+}
+
+.stack-node-label {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.stack-node-sublabel {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.stack-product-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--jade);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  min-width: 120px;
+  text-align: right;
+}
+
+.stack-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  height: 36px;
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+}
+
+.stack-connector-line {
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--jade) 0%, rgba(0, 181, 154, 0.2) 100%);
+}
+
+.stack-connector-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--jade);
+  position: absolute;
+  bottom: -2px;
+}
+
+.stack-endpoint {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: var(--space-sm) 0;
+  width: 100%;
+  max-width: 640px;
+}
+
+/* ================================================================
+   IDEAS (ARTICLES)
+   ================================================================ */
+.ideas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.idea-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.idea-card:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 4px 40px var(--jade-glow);
+  transform: translateY(-3px);
+}
+
+.idea-card-type {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: var(--space-md);
+}
+
+.idea-card-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin-bottom: var(--space-sm);
+  flex-grow: 0;
+}
+
+.idea-card-title a {
+  color: var(--text);
+  transition: color 0.2s var(--ease);
+}
+
+.idea-card-title a:hover {
+  color: var(--jade);
+}
+
+.idea-card-desc {
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  line-height: 1.7;
+  flex-grow: 1;
+  margin-bottom: var(--space-md);
+}
+
+.idea-card-link {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--jade);
+  margin-top: auto;
+}
+
+/* ================================================================
+   ABOUT
+   ================================================================ */
+#about {
+  border-top: 1px solid var(--surface-border);
+}
+
+.about-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-2xl);
+  align-items: start;
+  margin-top: var(--space-xl);
+}
+
+.about-text {
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.about-text strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.about-links {
+  list-style: none;
+  border-left: 1px solid var(--surface-border);
+  padding-left: var(--space-lg);
+}
+
+.about-links li {
+  margin-bottom: var(--space-sm);
+}
+
+.about-links a {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  transition: color 0.2s var(--ease);
+}
+
+.about-links a:hover {
+  color: var(--jade);
+}
+
+.about-links .link-label {
+  color: var(--text-faint);
+  min-width: 70px;
+}
+
+/* ================================================================
+   FOOTER
+   ================================================================ */
+.footer {
+  border-top: 1px solid var(--surface-border);
+  padding: var(--space-xl) 0;
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-brand {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-md);
+  list-style: none;
+}
+
+.footer-links a {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  transition: color 0.2s var(--ease);
+}
+
+.footer-links a:hover {
+  color: var(--jade);
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 900px) {
+  .thesis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ideas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-content {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+
+  .about-links {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--surface-border);
+    padding-top: var(--space-md);
+  }
+
+  .stack-product-tag {
+    display: none;
+  }
+
+  .stack-layer {
+    max-width: 100%;
+  }
+
+  .stack-connector {
+    max-width: 100%;
+  }
+
+  .stack-endpoint {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  html { font-size: 15px; }
+
+  .wrap { padding: 0 var(--space-md); }
+
+  section { padding: var(--space-2xl) 0; }
+
+  .hero { min-height: 90vh; padding: var(--space-2xl) 0; }
+
+  .hero-nav { flex-direction: column; gap: var(--space-xs); }
+
+  .nav-links { gap: var(--space-sm); }
+
+  .product-card { padding: var(--space-lg); }
+
+  .footer-inner {
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVIGATION (sticky, revealed on scroll)
+     ============================================================ -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <span class="nav-logo">Enchiridion Labs</span>
+    <ul class="nav-links">
+      <li><a href="#thesis">Thesis</a></li>
+      <li><a href="#products">Products</a></li>
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#ideas">Ideas</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-grid-fade"></div>
+  <div class="wrap hero-content">
+    <p class="hero-eyebrow">Research &amp; Infrastructure</p>
+    <h1 class="hero-title">Enchiridion<br>Labs</h1>
+    <p class="hero-tagline">Building the infrastructure for AI agents that actually work.</p>
+    <p class="hero-desc">We build the foundational tools that let AI agents access data, follow procedures, and deliver results through generated interfaces.</p>
+    <ul class="hero-nav">
+      <li><a href="#thesis">The Thesis</a></li>
+      <li><a href="#products">Products</a></li>
+      <li><a href="#stack">The Stack</a></li>
+      <li><a href="#ideas">Research</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================
+     THE THESIS — THREE ABSTRACTIONS
+     ============================================================ -->
+<section id="thesis">
+  <div class="wrap">
+    <div class="section-label reveal">01 &mdash; The Thesis</div>
+    <h2 class="section-title reveal reveal-delay-1">Three Abstractions That Make<br>AI Agents Real</h2>
+    <p class="section-subtitle reveal reveal-delay-2">Three standardized capabilities have recently emerged that, when combined, enable AI agents to execute complete workflows from start to finish.</p>
+
+    <div class="thesis-grid">
+      <div class="thesis-card reveal reveal-delay-1">
+        <div class="thesis-card-number">Abstraction 01</div>
+        <h3 class="thesis-card-title">MCP</h3>
+        <div class="thesis-card-subtitle">Model Context Protocol</div>
+        <p class="thesis-card-desc">Standardized access to data and APIs. A universal adapter between agents and the world's services &mdash; no bespoke integrations required.</p>
+      </div>
+      <div class="thesis-card reveal reveal-delay-2">
+        <div class="thesis-card-number">Abstraction 02</div>
+        <h3 class="thesis-card-title">Skills</h3>
+        <div class="thesis-card-subtitle">Procedural Knowledge</div>
+        <p class="thesis-card-desc">Encoded instructions, SOPs, and domain knowledge. Agents follow known procedures reliably instead of improvising from scratch.</p>
+      </div>
+      <div class="thesis-card reveal reveal-delay-3">
+        <div class="thesis-card-number">Abstraction 03</div>
+        <h3 class="thesis-card-title">Generative UI</h3>
+        <div class="thesis-card-subtitle">Dynamic Interfaces</div>
+        <p class="thesis-card-desc">AI-generated interfaces for human consumption. Every agent result is unique, so the UI must be generated to fit the specific output.</p>
+      </div>
+    </div>
+
+    <div class="thesis-connector reveal">
+      <p class="thesis-summary">Skills encode the what. MCP handles the how. Generative UI delivers the output.</p>
+    </div>
+
+    <p class="thesis-link reveal"><a href="https://vivekhaldar.com/articles/the-three-abstractions-that-make-ai-agents-real/">Read the full thesis &rarr;</a></p>
+  </div>
+</section>
+
+<!-- ============================================================
+     PRODUCTS
+     ============================================================ -->
+<section id="products">
+  <div class="wrap">
+    <div class="section-label reveal">02 &mdash; Products</div>
+    <h2 class="section-title reveal reveal-delay-1">What We Build</h2>
+    <p class="section-subtitle reveal reveal-delay-2">Three tools that form the infrastructure layer of the AI agent ecosystem.</p>
+
+    <div class="products-grid">
+
+      <!-- SkillRunner -->
+      <div class="product-card reveal">
+        <div>
+          <div class="product-meta"><span class="product-meta-dot"></span> sop.run</div>
+          <h3 class="product-name">SkillRunner</h3>
+          <p class="product-pitch">Stop writing SOPs. Start running them.</p>
+          <p class="product-desc">Transform standard operating procedures into autonomous AI workflows with human-in-the-loop approval gates. Your SOPs become executable agents.</p>
+          <ul class="product-features">
+            <li>Natural language workflow execution</li>
+            <li>MCP tool integration</li>
+            <li>Human approval checkpoints</li>
+            <li>Multi-LLM support with BYOK</li>
+            <li>Enterprise SSO</li>
+          </ul>
+          <a href="https://sop.run" class="product-link" target="_blank" rel="noopener">
+            Visit sop.run <span class="product-link-arrow">&rarr;</span>
+          </a>
+        </div>
+        <div class="product-preview">
+<span class="comment"># skill.md</span>
+<span class="label">name:</span> <span class="str">Invoice Processing</span>
+<span class="label">tools:</span> <span class="str">[email, database, slack]</span>
+
+<span class="keyword">Steps:</span>
+1. Read incoming invoices from email
+2. Extract vendor, amount, due date
+3. Cross-reference with PO database
+<span class="str">   [APPROVAL REQUIRED]</span>
+4. Post to accounting system
+5. Notify team on Slack
+        </div>
+      </div>
+
+      <!-- mcpknife -->
+      <div class="product-card reveal">
+        <div>
+          <div class="product-meta"><span class="product-meta-dot"></span> npm package</div>
+          <h3 class="product-name">mcpknife</h3>
+          <p class="product-pitch">A Swiss Army knife for MCP servers.</p>
+          <p class="product-desc">Generate, transform, and add UIs to MCP servers with Unix pipe composition. Go from &ldquo;I have an API&rdquo; to &ldquo;I have an MCP app with interactive UI&rdquo; in one command.</p>
+          <ul class="product-features">
+            <li><span style="color:var(--jade)">boot</span> &mdash; Generate servers from natural language</li>
+            <li><span style="color:var(--jade)">mod</span> &mdash; Reshape tools via natural language</li>
+            <li><span style="color:var(--jade)">ui</span> &mdash; Auto-generate interactive UIs</li>
+            <li>Unix pipe composition</li>
+            <li>Zero-code, natural language only</li>
+          </ul>
+          <a href="https://github.com/vivekhaldar/mcpknife" class="product-link" target="_blank" rel="noopener">
+            View on GitHub <span class="product-link-arrow">&rarr;</span>
+          </a>
+        </div>
+        <div class="product-preview">
+<span class="comment"># Generate + transform + add UI in one pipe</span>
+
+<span class="cmd">mcpknife boot</span> <span class="flag">--prompt</span> <span class="str">"GitHub API tools"</span> \
+  <span class="pipe">|</span> <span class="cmd">mcpknife mod</span> <span class="flag">--prompt</span> <span class="str">"combine issues</span>
+<span class="str">     and pulls into get_activity"</span> \
+  <span class="pipe">|</span> <span class="cmd">mcpknife ui</span>
+
+<span class="comment"># Result: MCP server with interactive UI</span>
+<span class="comment"># ready for ChatGPT or Claude</span>
+        </div>
+      </div>
+
+      <!-- mcp-ui-gen -->
+      <div class="product-card reveal">
+        <div>
+          <div class="product-meta"><span class="product-meta-dot"></span> aimyapp.online</div>
+          <h3 class="product-name">AIMyApp</h3>
+          <p class="product-pitch">Turn any website into a ChatGPT App.</p>
+          <p class="product-desc">Three-phase pipeline that discovers user intents, extracts structured content, and generates MCP-compliant servers with interactive UI specs.</p>
+          <ul class="product-features">
+            <li><span style="color:var(--jade)">discover</span> &mdash; LLM analyzes your live website</li>
+            <li><span style="color:var(--jade)">extract</span> &mdash; Structured content extraction</li>
+            <li><span style="color:var(--jade)">generate</span> &mdash; MCP server + UI specs</li>
+            <li>Dual-standard: MCP Apps + OpenAI Apps SDK</li>
+            <li>Works with any site type</li>
+          </ul>
+          <a href="https://aimyapp.online" class="product-link" target="_blank" rel="noopener">
+            Visit aimyapp.online <span class="product-link-arrow">&rarr;</span>
+          </a>
+        </div>
+        <div class="product-preview">
+<span class="comment"># Convert a restaurant site to an MCP App</span>
+
+<span class="cmd">uigen discover</span> <span class="str">https://sunset-cantina.com</span>
+<span class="comment"># -> intents.yaml (browse_menu, view_item...)</span>
+
+<span class="cmd">uigen extract</span> <span class="str">intents.yaml</span>
+<span class="comment"># -> content.json (categories, items, prices)</span>
+
+<span class="cmd">uigen generate</span> <span class="str">intents.yaml content.json</span>
+<span class="comment"># -> MCP server + interactive UI specs</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     THE STACK
+     ============================================================ -->
+<section id="stack">
+  <div class="wrap">
+    <div class="section-label reveal">03 &mdash; The Stack</div>
+    <h2 class="section-title reveal reveal-delay-1">How It Fits Together</h2>
+    <p class="section-subtitle reveal reveal-delay-2">Our tools form the infrastructure layer &mdash; the part that creates, transforms, and interfaces MCP servers that app frameworks build on.</p>
+
+    <div class="stack-visual">
+      <div class="stack-endpoint reveal">User / ChatGPT / Claude</div>
+
+      <div class="stack-connector"><div class="stack-connector-line"></div><div class="stack-connector-dot"></div></div>
+      <div class="stack-layer reveal reveal-delay-1">
+        <div class="stack-node">
+          <div class="stack-node-label">Generative UI</div>
+          <div class="stack-node-sublabel">Dynamic interfaces for humans</div>
+        </div>
+        <div class="stack-product-tag">AIMyApp</div>
+      </div>
+
+      <div class="stack-connector"><div class="stack-connector-line"></div><div class="stack-connector-dot"></div></div>
+      <div class="stack-layer reveal reveal-delay-2">
+        <div class="stack-node">
+          <div class="stack-node-label">Skills Engine</div>
+          <div class="stack-node-sublabel">Procedural knowledge execution</div>
+        </div>
+        <div class="stack-product-tag">SkillRunner</div>
+      </div>
+
+      <div class="stack-connector"><div class="stack-connector-line"></div><div class="stack-connector-dot"></div></div>
+      <div class="stack-layer reveal reveal-delay-3">
+        <div class="stack-node">
+          <div class="stack-node-label">MCP Infrastructure</div>
+          <div class="stack-node-sublabel">Server generation &amp; transformation</div>
+        </div>
+        <div class="stack-product-tag">mcpknife</div>
+      </div>
+
+      <div class="stack-connector"><div class="stack-connector-line"></div><div class="stack-connector-dot"></div></div>
+      <div class="stack-endpoint reveal reveal-delay-4">Raw APIs / Databases / Services</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     IDEAS (ARTICLES)
+     ============================================================ -->
+<section id="ideas">
+  <div class="wrap">
+    <div class="section-label reveal">04 &mdash; Ideas</div>
+    <h2 class="section-title reveal reveal-delay-1">Research &amp; Writing</h2>
+    <p class="section-subtitle reveal reveal-delay-2">The intellectual foundation behind the tools.</p>
+
+    <div class="ideas-grid">
+
+      <div class="idea-card reveal reveal-delay-1">
+        <div class="idea-card-type">Thesis</div>
+        <h3 class="idea-card-title"><a href="https://vivekhaldar.com/articles/the-three-abstractions-that-make-ai-agents-real/">The Three Abstractions That Make AI Agents Real</a></h3>
+        <p class="idea-card-desc">Three standardized capabilities &mdash; MCP, Skills, and Generative UI &mdash; click together to enable agents that execute complete, end-to-end business processes.</p>
+        <a href="https://vivekhaldar.com/articles/the-three-abstractions-that-make-ai-agents-real/" class="idea-card-link">Read &rarr;</a>
+      </div>
+
+      <div class="idea-card reveal reveal-delay-2">
+        <div class="idea-card-type">Platform</div>
+        <h3 class="idea-card-title"><a href="https://vivekhaldar.com/articles/birth-of-a-new-platform/">Birth of a New Platform</a></h3>
+        <p class="idea-card-desc">The ChatGPT App Store as the next major platform opportunity, with 800 million weekly active users and a nascent developer ecosystem.</p>
+        <a href="https://vivekhaldar.com/articles/birth-of-a-new-platform/" class="idea-card-link">Read &rarr;</a>
+      </div>
+
+      <div class="idea-card reveal reveal-delay-3">
+        <div class="idea-card-type">Framework</div>
+        <h3 class="idea-card-title"><a href="https://vivekhaldar.com/articles/read-cognify-write/">Read-Cognify-Write</a></h3>
+        <p class="idea-card-desc">Knowledge work decomposed into atomic loops. AI as a compiler that optimizes, parallelizes, and eliminates unnecessary steps in these loops.</p>
+        <a href="https://vivekhaldar.com/articles/read-cognify-write/" class="idea-card-link">Read &rarr;</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ABOUT
+     ============================================================ -->
+<section id="about">
+  <div class="wrap">
+    <div class="section-label reveal">05 &mdash; About</div>
+    <h2 class="section-title reveal reveal-delay-1">Built by Vivek Haldar</h2>
+
+    <div class="about-content">
+      <div class="about-text reveal reveal-delay-2">
+        <strong>18 years at Google. VP of Engineering.</strong> Now building the infrastructure layer of the AI agent ecosystem as a solo founder.<br><br>
+        The thesis is simple: AI agents need three things to work in practice &mdash; standardized data access, encoded procedures, and generated interfaces. Each of these has recently become a standardized capability. The tools we build sit at this intersection, creating the infrastructure that makes agent-driven automation real.
+      </div>
+      <ul class="about-links reveal reveal-delay-3">
+        <li><a href="https://vivekhaldar.com" target="_blank" rel="noopener"><span class="link-label">Web</span> vivekhaldar.com</a></li>
+        <li><a href="https://youtube.com/@vivekhaldar" target="_blank" rel="noopener"><span class="link-label">YouTube</span> @vivekhaldar</a></li>
+        <li><a href="https://x.com/halaborr" target="_blank" rel="noopener"><span class="link-label">X</span> @halaborr</a></li>
+        <li><a href="https://linkedin.com/in/vivekhaldar" target="_blank" rel="noopener"><span class="link-label">LinkedIn</span> vivekhaldar</a></li>
+        <li><a href="https://github.com/vivekhaldar" target="_blank" rel="noopener"><span class="link-label">GitHub</span> vivekhaldar</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-inner">
+      <span class="footer-brand">Enchiridion Labs &copy; 2026</span>
+      <ul class="footer-links">
+        <li><a href="https://sop.run" target="_blank" rel="noopener">SkillRunner</a></li>
+        <li><a href="https://github.com/vivekhaldar/mcpknife" target="_blank" rel="noopener">mcpknife</a></li>
+        <li><a href="https://aimyapp.online" target="_blank" rel="noopener">AIMyApp</a></li>
+        <li><a href="https://vivekhaldar.com" target="_blank" rel="noopener">Blog</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script>
+// Scroll-triggered reveal animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Sticky nav on scroll (appears after scrolling past hero)
+const nav = document.getElementById('nav');
+const hero = document.getElementById('hero');
+
+const navObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) {
+      nav.classList.add('visible');
+    } else {
+      nav.classList.remove('visible');
+    }
+  });
+}, { threshold: 0 });
+
+navObserver.observe(hero);
+</script>
+
+</body>
+</html>

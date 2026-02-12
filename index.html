@@ -7,7 +7,7 @@
 <meta name="description" content="Building the foundational tools that let AI agents access data, follow procedures, and deliver results through generated interfaces.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ================================================================
    ENCHIRIDION LABS — DESIGN TOKENS
@@ -18,21 +18,21 @@
   --surface: #131419;
   --surface-hover: #1a1b22;
   --surface-border: rgba(240, 237, 232, 0.06);
-  --surface-border-hover: rgba(0, 181, 154, 0.25);
+  --surface-border-hover: rgba(0, 212, 161, 0.25);
 
   --text: #f0ede8;
   --text-secondary: #b0ada6;
   --text-muted: #6a6875;
   --text-faint: #5e5d68;
 
-  --jade: #00B59A;
-  --jade-dim: rgba(0, 181, 154, 0.12);
-  --jade-glow: rgba(0, 181, 154, 0.08);
-  --amber: #E7A23D;
-  --amber-dim: rgba(231, 162, 61, 0.12);
+  --jade: #00D4A1;
+  --jade-dim: rgba(0, 212, 161, 0.12);
+  --jade-glow: rgba(0, 212, 161, 0.08);
+  --amber: #E8A94A;
+  --amber-dim: rgba(232, 169, 74, 0.12);
 
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-body: 'Sora', -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Crimson Pro', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
 
   --space-xs: 0.5rem;
@@ -57,7 +57,7 @@
 
 html {
   scroll-behavior: smooth;
-  font-size: 17px;
+  font-size: 19px;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -65,7 +65,8 @@ body {
   font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.7;
+  line-height: 1.75;
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -146,6 +147,7 @@ section {
   font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2rem, 4vw, 3rem);
+  font-optical-sizing: auto;
   line-height: 1.15;
   letter-spacing: -0.02em;
   margin-bottom: var(--space-md);
@@ -256,8 +258,8 @@ section {
   position: absolute;
   inset: -50%;
   background-image:
-    linear-gradient(rgba(0, 181, 154, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 181, 154, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(0, 212, 161, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 161, 0.04) 1px, transparent 1px);
   background-size: 60px 60px;
   animation: gridDrift 30s linear infinite;
   pointer-events: none;
@@ -293,10 +295,11 @@ section {
 
 .hero-title {
   font-family: var(--font-display);
-  font-weight: 400;
-  font-size: clamp(3.2rem, 8vw, 6.5rem);
-  line-height: 1.0;
-  letter-spacing: -0.03em;
+  font-weight: 300;
+  font-size: clamp(3.6rem, 9vw, 7.5rem);
+  font-optical-sizing: auto;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
   margin-bottom: var(--space-md);
   opacity: 0;
   animation: fadeUp 0.8s var(--ease-out) 0.4s forwards;
@@ -305,10 +308,12 @@ section {
 .hero-tagline {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(1.3rem, 3vw, 2rem);
-  line-height: 1.35;
+  font-weight: 400;
+  font-size: clamp(1.4rem, 3vw, 2.1rem);
+  font-optical-sizing: auto;
+  line-height: 1.4;
   color: var(--text-secondary);
-  max-width: 680px;
+  max-width: 700px;
   margin-bottom: var(--space-lg);
   opacity: 0;
   animation: fadeUp 0.8s var(--ease-out) 0.6s forwards;
@@ -390,7 +395,9 @@ section {
 
 .thesis-card-title {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.7rem;
+  font-weight: 500;
+  font-optical-sizing: auto;
   line-height: 1.2;
   margin-bottom: var(--space-sm);
 }
@@ -429,11 +436,13 @@ section {
 .thesis-summary {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 1.35rem;
+  font-weight: 400;
+  font-size: 1.45rem;
+  font-optical-sizing: auto;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.55;
   text-align: center;
-  max-width: 640px;
+  max-width: 660px;
   margin: 0 auto;
   position: relative;
   background: var(--bg);
@@ -451,7 +460,7 @@ section {
 
 .thesis-link a {
   color: var(--jade);
-  border-bottom: 1px solid rgba(0, 181, 154, 0.3);
+  border-bottom: 1px solid rgba(0, 212, 161, 0.3);
   padding-bottom: 2px;
   transition: border-color 0.2s var(--ease);
 }
@@ -508,14 +517,16 @@ section {
 
 .product-name {
   font-family: var(--font-display);
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-weight: 500;
+  font-optical-sizing: auto;
   line-height: 1.1;
   margin-bottom: var(--space-xs);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .product-pitch {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-style: italic;
   font-size: 1.1rem;
   color: var(--amber);
@@ -564,7 +575,7 @@ section {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-bottom: 1px solid rgba(0, 181, 154, 0.3);
+  border-bottom: 1px solid rgba(0, 212, 161, 0.3);
   padding-bottom: 2px;
   transition: all 0.2s var(--ease);
 }
@@ -758,7 +769,9 @@ section {
 
 .idea-card-title {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.45rem;
+  font-weight: 500;
+  font-optical-sizing: auto;
   line-height: 1.25;
   margin-bottom: var(--space-sm);
   flex-grow: 0;
@@ -933,7 +946,7 @@ section {
 }
 
 @media (max-width: 600px) {
-  html { font-size: 15px; }
+  html { font-size: 17px; }
 
   .wrap { padding: 0 var(--space-md); }
 
@@ -1241,7 +1254,7 @@ section {
         <li><a href="https://github.com/vivekhaldar" target="_blank" rel="noopener"><span class="link-label">GitHub</span> github.com/vivekhaldar</a></li>
         <li><a href="https://vivekhaldar.com" target="_blank" rel="noopener"><span class="link-label">Blog</span> vivekhaldar.com</a></li>
         <li><a href="https://youtube.com/@vivekhaldar" target="_blank" rel="noopener"><span class="link-label">YouTube</span> @vivekhaldar</a></li>
-        <li><a href="https://x.com/halaborr" target="_blank" rel="noopener"><span class="link-label">X</span> @halaborr</a></li>
+        <li><a href="https://x.com/vivekhaldar" target="_blank" rel="noopener"><span class="link-label">X</span> @vivekhaldar</a></li>
       </ul>
     </div>
   </div>

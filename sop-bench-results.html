@@ -493,7 +493,7 @@
 <div class="hero">
   <h1>Proceda Achieves SOTA on SOP-Bench<span class="asterisk">*</span></h1>
   <p class="caveat">*On 4 of 10 runnable domains by raw TSR; 8 of 10 when excluding benchmark labeling issues we identified and reported. Four additional domains were not runnable due to benchmark bugs. See <a href="#benchmark-quality">Benchmark Quality</a> for details.</p>
-  <p class="byline">By <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; March 2026</p>
+  <p class="byline">By <a href="https://vivekhaldar.com">Vivek Haldar</a> / <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; March 2026</p>
 </div>
 
 <div class="summary-box">
@@ -898,6 +898,8 @@
 </div>
 
 <p>This is why Gemini 2.5 Flash beats Claude 4 Sonnet on Dangerous Goods: the procedure is formulaic &mdash; weighted scoring with imputation rules &mdash; and Proceda's step decomposition makes each step tractable. The model doesn't need to &ldquo;be smart&rdquo;; it needs to follow instructions and call the right tool with the right parameters.</p>
+
+<p>For a deeper technical analysis of the seven design decisions that enable this &mdash; state machine execution, control tools, context trimming, approval gates, structured extraction, guard rails, and event-driven observability &mdash; see <a href="sop-execution-engine-design.html"><strong>Anatomy of a SOTA Agentic SOP-Execution Engine</strong></a>.</p>
 
 <h3>Operational Features for Production SOPs</h3>
 

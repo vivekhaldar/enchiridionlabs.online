@@ -1,0 +1,2445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proceda — Harness Engineering for SOPs</title>
+<meta name="description" content="Slide deck: Proceda's execution harness design and SOP-Bench results.">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   ENCHIRIDION LABS — DESIGN TOKENS
+   ================================================================ */
+:root {
+  --bg: #0a0b0f;
+  --bg-warm: #0d0e13;
+  --surface: #131419;
+  --surface-hover: #1a1b22;
+  --surface-border: rgba(240, 237, 232, 0.06);
+  --surface-border-hover: rgba(0, 212, 161, 0.25);
+
+  --text: #f0ede8;
+  --text-secondary: #b0ada6;
+  --text-muted: #6a6875;
+  --text-faint: #5e5d68;
+
+  --jade: #00D4A1;
+  --jade-dim: rgba(0, 212, 161, 0.12);
+  --jade-glow: rgba(0, 212, 161, 0.08);
+  --amber: #E8A94A;
+  --amber-dim: rgba(232, 169, 74, 0.12);
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Crimson Pro', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  font-size: 20px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  @page { size: 1920px 1080px; margin: 0; }
+  html { background: var(--bg) !important; }
+  html, body { overflow: visible !important; height: auto !important; width: auto !important; }
+  body::after { display: none !important; }
+  .deck { position: static !important; width: 100% !important; height: auto !important; }
+  .slide {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important; left: auto !important;
+    width: 1920px !important;
+    height: 1080px !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
+  }
+  .slide:last-child { page-break-after: auto !important; break-after: auto !important; }
+  .grid-bg-fade { display: none !important; }
+  .hud, .hint, .progress { display: none !important; }
+  .slide-grid { grid-template-columns: 5fr 7fr !important; gap: 3vw !important; }
+  .pipeline { grid-template-columns: 1fr auto 1fr auto 1fr !important; }
+  .pipeline-arrow { transform: none !important; }
+  .compare { grid-template-columns: 1fr 1fr !important; }
+}
+
+::selection { background: var(--jade); color: var(--bg); }
+
+a { color: var(--jade); text-decoration: none; transition: color 0.2s var(--ease); }
+a:hover { color: var(--text); }
+
+/* Subtle fixed noise overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ================================================================
+   DECK SHELL
+   ================================================================ */
+.deck {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  padding: 6vh 7vw 8vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ease-out);
+  overflow: hidden;
+}
+
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.slide-inner {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* slide-grid: two-column layout used on code-paired slides */
+.slide-grid {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  gap: 3vw;
+  align-items: center;
+}
+
+.slide-grid--stack {
+  grid-template-columns: 1fr;
+}
+
+/* ================================================================
+   TYPOGRAPHY HELPERS
+   ================================================================ */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--surface-border) 0%, transparent 100%);
+  max-width: 240px;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.8rem;
+}
+
+h1.deck-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(3.6rem, 9vw, 7rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-optical-sizing: auto;
+  margin-bottom: 1.2rem;
+}
+h1.deck-title em {
+  color: var(--jade);
+  font-style: normal;
+}
+
+h2.slide-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.2rem, 4.6vw, 3.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+}
+
+h3.slide-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin-bottom: 1.6rem;
+}
+
+.lede {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  line-height: 1.4;
+  color: var(--text);
+  max-width: 30ch;
+}
+
+.body-large {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  font-weight: 300;
+  max-width: 38ch;
+}
+
+.body-bullets {
+  list-style: none;
+  margin-top: 1.2rem;
+}
+.body-bullets li {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(240, 237, 232, 0.04);
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+.body-bullets li::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--jade);
+  flex-shrink: 0;
+  margin-top: 0.55em;
+}
+
+/* ================================================================
+   PRINCIPLE / PULL QUOTE
+   ================================================================ */
+.principle {
+  border-left: 3px solid var(--amber);
+  background: var(--amber-dim);
+  padding: 0.9rem 1.4rem;
+  border-radius: 0 6px 6px 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--text);
+  margin: 1.2rem 0 1.5rem;
+  max-width: 38ch;
+}
+
+.pull-quote {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.25;
+  color: var(--text);
+  border-left: 3px solid var(--jade);
+  padding: 1.2rem 2rem;
+  max-width: 22ch;
+}
+
+.callout {
+  border-left: 3px solid var(--jade);
+  background: var(--jade-dim);
+  padding: 0.9rem 1.4rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 1.4rem;
+  max-width: 42ch;
+}
+.callout p {
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+.callout strong { color: var(--jade); font-weight: 500; }
+
+/* ================================================================
+   CODE BLOCKS
+   ================================================================ */
+.code-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  box-shadow: 0 8px 50px rgba(0,0,0,0.4);
+}
+
+.code-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: var(--bg-warm);
+  border-bottom: 1px solid var(--surface-border);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+.code-card-header .file {
+  color: var(--text-secondary);
+}
+.code-card-header .file .lines {
+  color: var(--text-muted);
+  margin-left: 0.4em;
+}
+.code-card-header a {
+  color: var(--jade);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.62rem;
+}
+
+.code-card pre {
+  margin: 0;
+  padding: 1rem 1.2rem;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: clamp(0.62rem, 0.82vw, 0.78rem);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.code-card pre code { color: inherit; background: none; font-family: inherit; }
+
+/* Tiny syntax-ish highlights */
+.tok-kw { color: #c89cff; }
+.tok-fn { color: #74e0ff; }
+.tok-str { color: #b6e09d; }
+.tok-num { color: var(--amber); }
+.tok-com { color: var(--text-faint); font-style: italic; }
+.tok-jade { color: var(--jade); }
+
+/* ================================================================
+   TABLES (results)
+   ================================================================ */
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  margin-top: 1.2rem;
+}
+table.results th,
+table.results td {
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+table.results th {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+table.results td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+table.results td.jade { color: var(--jade); font-weight: 500; }
+table.results td.amber { color: var(--amber); }
+table.results td.dim { color: var(--text-muted); }
+table.results tr:hover td { background: rgba(255,255,255,0.015); }
+
+/* Compact full-results table (slide 22) */
+table.results.full {
+  font-size: 0.72rem;
+  margin-top: 0.6rem;
+}
+table.results.full th,
+table.results.full td {
+  padding: 0.45rem 0.7rem;
+}
+table.results.full td.domain {
+  font-family: var(--font-body);
+  font-size: 1.02em;
+  color: var(--text);
+}
+table.results.full td.model {
+  color: var(--text-secondary);
+  font-size: 0.95em;
+}
+table.results.full td.baseline {
+  color: var(--text-muted);
+  font-size: 0.95em;
+}
+.pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.74em;
+  letter-spacing: 0.04em;
+  background: var(--jade-dim);
+  border: 1px solid rgba(0, 212, 161, 0.25);
+  color: var(--jade);
+  padding: 0.18em 0.55em;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pill.dim {
+  background: transparent;
+  border-color: var(--surface-border);
+  color: var(--text-muted);
+}
+
+/* Chart slide */
+.chart-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.chart-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart-caption {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  text-align: center;
+  max-width: 80ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ================================================================
+   COMPARE LAYOUT (baseline vs proceda)
+   ================================================================ */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.6rem;
+  margin-top: 1.4rem;
+}
+.compare-col {
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 1.6rem 1.7rem;
+}
+.compare-col h4 {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.compare-col.baseline { border-top: 3px solid var(--text-muted); }
+.compare-col.proceda { border-top: 3px solid var(--jade); }
+.compare-col p {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+.compare-col p:last-child { margin-bottom: 0; }
+
+/* ================================================================
+   PIPELINE (3-phase architecture)
+   ================================================================ */
+.pipeline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 0.6rem;
+  align-items: stretch;
+  margin-top: 1.6rem;
+}
+.pipeline-step {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 1.4rem 1.5rem;
+}
+.pipeline-step .step-no {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.6rem;
+}
+.pipeline-step h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+.pipeline-step p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.pipeline-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--jade);
+  font-size: 1.4rem;
+}
+
+/* ================================================================
+   BIG NUMBER SLIDE
+   ================================================================ */
+.big-number {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(7rem, 16vw, 14rem);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  color: var(--jade);
+  font-optical-sizing: auto;
+  margin-bottom: 0.4rem;
+}
+.big-number .pct {
+  font-size: 0.45em;
+  vertical-align: 0.6em;
+  margin-left: 0.05em;
+  color: var(--jade);
+}
+
+.big-number-label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  max-width: 30ch;
+}
+
+.delta-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: var(--jade-dim);
+  border: 1px solid rgba(0, 212, 161, 0.3);
+  color: var(--jade);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+/* ================================================================
+   DELTA / GAINS GRID
+   ================================================================ */
+.gains-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1.6rem;
+}
+.gain {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 1.3rem 1.5rem;
+  border-top: 3px solid var(--jade);
+}
+.gain .domain {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.gain .score {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--text);
+}
+.gain .score .pct { font-size: 0.55em; color: var(--text-muted); margin-left: 0.05em; }
+.gain .model {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+}
+.gain .delta {
+  margin-top: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--jade);
+  letter-spacing: 0.04em;
+}
+
+/* ================================================================
+   SECTION DIVIDER SLIDE
+   ================================================================ */
+.divider-num {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  color: var(--jade);
+  margin-bottom: 1.4rem;
+}
+.divider-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(4rem, 9vw, 7rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+.divider-title em { color: var(--jade); font-style: normal; }
+
+/* ================================================================
+   FOOTER + HUD
+   ================================================================ */
+.slide-footer {
+  position: absolute;
+  bottom: 2.2vh;
+  left: 7vw;
+  right: 7vw;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.slide-footer .brand { color: var(--text-secondary); }
+.slide-footer .brand .dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--jade);
+  margin: 0 0.5em;
+  vertical-align: middle;
+}
+
+.hud {
+  position: fixed;
+  bottom: 0.9vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  letter-spacing: 0.18em;
+  z-index: 10000;
+  pointer-events: none;
+  user-select: none;
+}
+.hud-count { color: var(--text-secondary); }
+.hud-help {
+  color: var(--text-faint);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.hud-help kbd {
+  font-family: inherit;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  color: var(--text-muted);
+  font-size: 0.92em;
+}
+
+/* ================================================================
+   MODAL OVERLAYS — shortcuts help + slide picker
+   ================================================================ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 11, 15, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 11000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh 6vw;
+  animation: overlayIn 0.25s var(--ease-out);
+}
+.overlay.visible { display: flex; }
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlay-panel {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  max-width: 1100px;
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(0, 212, 161, 0.06);
+}
+
+.overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1.4rem 1.8rem 1.1rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+.overlay-title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jade);
+}
+.overlay-hint-close {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
+}
+.overlay-hint-close kbd {
+  font-family: inherit;
+  background: var(--bg-warm);
+  border: 1px solid var(--surface-border);
+  border-radius: 3px;
+  padding: 0.1em 0.45em;
+  color: var(--text-secondary);
+  margin: 0 0.15em;
+}
+
+.overlay-body {
+  padding: 1.4rem 1.8rem 1.8rem;
+  overflow: auto;
+}
+
+/* shortcuts list */
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 2.4rem;
+}
+.shortcut-row {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  align-items: baseline;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(240, 237, 232, 0.04);
+}
+.shortcut-keys {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+.shortcut-keys kbd {
+  font-family: inherit;
+  background: var(--bg-warm);
+  border: 1px solid var(--surface-border);
+  border-radius: 4px;
+  padding: 0.15em 0.45em;
+  color: var(--text);
+  margin-right: 0.2em;
+  font-size: 0.9em;
+}
+.shortcut-keys .sep {
+  color: var(--text-faint);
+  margin: 0 0.35em;
+  font-size: 0.85em;
+}
+.shortcut-desc {
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+/* slide picker */
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+.picker-card {
+  background: var(--bg);
+  border: 1px solid rgba(240, 237, 232, 0.10);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease), transform 0.15s var(--ease);
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--text);
+}
+.picker-card:hover,
+.picker-card:focus,
+.picker-card.focused {
+  border-color: var(--jade);
+  background: var(--surface-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+.picker-card.current {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 1px var(--jade) inset, 0 0 30px var(--jade-glow);
+}
+.picker-card-num {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: 0.4rem;
+}
+.picker-card-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.02rem;
+  line-height: 1.25;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+.picker-card-meta {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Progress bar */
+.progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--jade);
+  z-index: 10001;
+  transition: width 0.4s var(--ease-out);
+  box-shadow: 0 0 12px rgba(0,212,161,0.5);
+}
+
+/* ================================================================
+   TITLE SLIDE
+   ================================================================ */
+.title-slide { text-align: left; }
+.title-slide .deck-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: 2rem;
+}
+.title-slide .tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  color: var(--text-secondary);
+  max-width: 36ch;
+  line-height: 1.4;
+  margin-bottom: 2.4rem;
+}
+.title-slide .meta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.1em;
+  align-items: baseline;
+}
+.title-slide .meta a {
+  color: var(--text-secondary);
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.title-slide .meta a:hover {
+  color: var(--jade);
+  border-bottom-color: var(--jade);
+}
+.title-slide .meta .sep {
+  color: var(--text-faint);
+}
+
+/* ================================================================
+   ABOUT SLIDE — link cards
+   ================================================================ */
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 2rem;
+  max-width: 1100px;
+}
+.about-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 1.3rem 1.4rem;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+}
+.about-card:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 6px 40px var(--jade-glow);
+  transform: translateY(-2px);
+  color: inherit;
+}
+.about-card-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--jade);
+  margin-bottom: 0.2rem;
+}
+.about-card-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.about-card-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.2rem;
+  color: var(--text);
+  line-height: 1.2;
+}
+.about-card-url {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
+.about-card:hover .about-card-url {
+  color: var(--jade);
+}
+.about-card-desc {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 1100px) {
+  .about-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Decorative grid backdrop for title + dividers */
+.grid-bg {
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(rgba(0, 212, 161, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 161, 0.05) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
+  z-index: 0;
+}
+.grid-bg-fade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 0%, var(--bg) 75%);
+  pointer-events: none;
+  z-index: 1;
+}
+.slide > .slide-inner { position: relative; z-index: 2; }
+
+/* ================================================================
+   COMPACT LIST FOR LINK SLIDE
+   ================================================================ */
+.link-list {
+  list-style: none;
+  margin-top: 1.5rem;
+}
+.link-list li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--surface-border);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+.link-list a { color: var(--jade); }
+.link-list a:hover { color: var(--text); }
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 900px) {
+  html { font-size: 16px; }
+  .slide { padding: 5vh 6vw 7vh; }
+  .slide-grid { grid-template-columns: 1fr; gap: 1.6rem; }
+  .pipeline { grid-template-columns: 1fr; }
+  .pipeline-arrow { transform: rotate(90deg); }
+  .compare { grid-template-columns: 1fr; }
+  .gains-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="hud">
+  <span class="hud-count"><span id="hud-current">01</span> / <span id="hud-total">26</span></span>
+  <span class="hud-help"><kbd>?</kbd> help &middot; <kbd>t</kbd> toc</span>
+</div>
+
+<div class="overlay" id="overlay-help" aria-hidden="true" role="dialog" aria-label="Keyboard shortcuts">
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span class="overlay-title">Keyboard shortcuts</span>
+      <span class="overlay-hint-close"><kbd>Esc</kbd> close</span>
+    </div>
+    <div class="overlay-body">
+      <div class="shortcuts-grid">
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>&rarr;</kbd><span class="sep">/</span><kbd>Space</kbd><span class="sep">/</span><kbd>j</kbd><span class="sep">/</span><kbd>l</kbd></span><span class="shortcut-desc">Next slide</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>&larr;</kbd><span class="sep">/</span><kbd>k</kbd><span class="sep">/</span><kbd>h</kbd></span><span class="shortcut-desc">Previous slide</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>PgUp</kbd><span class="sep">/</span><kbd>PgDn</kbd></span><span class="shortcut-desc">Previous / next slide</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Home</kbd><span class="sep">/</span><kbd>End</kbd></span><span class="shortcut-desc">First / last slide</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>1</kbd>&hellip;<kbd>9</kbd></span><span class="shortcut-desc">Jump to slide 1&ndash;9 (use TOC for the rest)</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>g</kbd> <span class="sep">+</span> number</span><span class="shortcut-desc">Jump to slide by number, then <kbd>Enter</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>t</kbd></span><span class="shortcut-desc">Open the table of contents</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>?</kbd></span><span class="shortcut-desc">Show this help</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>f</kbd></span><span class="shortcut-desc">Toggle fullscreen</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys"><kbd>Esc</kbd></span><span class="shortcut-desc">Close overlays</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-toc" aria-hidden="true" role="dialog" aria-label="Table of contents">
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span class="overlay-title">Table of contents</span>
+      <span class="overlay-hint-close"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> move &middot; <kbd>Enter</kbd> go &middot; <kbd>Esc</kbd> close</span>
+    </div>
+    <div class="overlay-body">
+      <div class="picker-grid" id="picker-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="deck" id="deck">
+
+<!-- ================================================================
+     SLIDE 1 — TITLE
+     ================================================================ -->
+<section class="slide title-slide">
+  <div class="grid-bg"></div>
+  <div class="grid-bg-fade"></div>
+  <div class="slide-inner">
+    <div class="deck-eyebrow">Enchiridion Labs · 2026</div>
+    <h1 class="deck-title">Proceda<em>.</em></h1>
+    <p class="tagline">A harness for turning Standard Operating Procedures into reliable AI workflows &mdash; with cheaper models, beating frontier baselines.</p>
+    <div class="meta">
+      <a href="https://enchiridionlabs.online/sop-execution-engine-design.html" target="_blank" rel="noopener">design notes</a>
+      <span class="sep">&middot;</span>
+      <a href="https://enchiridionlabs.online/sop-bench-results.html" target="_blank" rel="noopener">sop-bench results</a>
+      <span class="sep">&middot;</span>
+      <a href="https://github.com/vivekhaldar/proceda" target="_blank" rel="noopener">github.com/vivekhaldar/proceda</a>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>sop-execution-engine-design</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 2 — ABOUT
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">About &nbsp;/&nbsp; The author</div>
+    <h2 class="slide-title">Vivek Haldar.</h2>
+    <div class="about-grid">
+      <a class="about-card" href="https://enchiridionlabs.online" target="_blank" rel="noopener">
+        <div class="about-card-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h7v7H3V3zm0 11h7v7H3v-7zm11-11h7v7h-7V3zm0 11h7v7h-7v-7z"/></svg>
+        </div>
+        <div class="about-card-name">Enchiridion Labs</div>
+        <div class="about-card-desc">Infrastructure for AI agents.</div>
+        <div class="about-card-url">enchiridionlabs.online</div>
+      </a>
+      <a class="about-card" href="https://vivekhaldar.com" target="_blank" rel="noopener">
+        <div class="about-card-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h18v2H3V4zm0 6h18v2H3v-2zm0 6h12v2H3v-2z"/></svg>
+        </div>
+        <div class="about-card-name">vivekhaldar.com</div>
+        <div class="about-card-desc">Essays, articles, ideas.</div>
+        <div class="about-card-url">vivekhaldar.com</div>
+      </a>
+      <a class="about-card" href="https://youtube.com/c/VivekHaldar" target="_blank" rel="noopener">
+        <div class="about-card-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.4-1.9.5-3.8.5-5.8s-.1-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>
+        </div>
+        <div class="about-card-name">YouTube</div>
+        <div class="about-card-desc">Videos on programming, AI, tools, ideas.</div>
+        <div class="about-card-url">youtube.com/c/VivekHaldar</div>
+      </a>
+      <a class="about-card" href="https://github.com/vivekhaldar" target="_blank" rel="noopener">
+        <div class="about-card-icon">
+          <svg viewBox="0 0 98 96" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z"/></svg>
+        </div>
+        <div class="about-card-name">GitHub</div>
+        <div class="about-card-desc">Code: Proceda, mcpknife, more.</div>
+        <div class="about-card-url">github.com/vivekhaldar</div>
+      </a>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>about</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 3 — HARNESS ENGINEERING
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">01 &nbsp;/&nbsp; The shift</div>
+    <h2 class="slide-title">Harness engineering.</h2>
+    <h3 class="slide-subtitle">The bottleneck isn't what you say to the model &mdash; it's what you <em>let</em> the model do, when, and how.</h3>
+    <div class="callout">
+      <p>For procedural tasks, a well-designed execution harness substitutes for raw model capability. <strong>Gemini 2.5 Flash</strong>, on rails, beats <strong>Claude 4.5 Opus</strong> off them.</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>01 · the shift</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 3 — CORE THESIS PULL QUOTE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">02 &nbsp;/&nbsp; Thesis</div>
+    <div class="pull-quote">
+      Architecture matters more than model strength &mdash; once the work is procedural.
+    </div>
+    <p class="body-large" style="margin-top:2rem;">
+      SOPs have defined steps, tool dependencies, and deterministic outcomes. The model doesn't need to "be smart" &mdash; it needs to follow instructions and call the right tool with the right parameters.
+    </p>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>02 · thesis</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 4 — BASELINE vs PROCEDA
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">03 &nbsp;/&nbsp; Two architectures</div>
+    <h2 class="slide-title">Plan-and-execute vs. step-and-signal.</h2>
+    <div class="compare">
+      <div class="compare-col baseline">
+        <h4>Baseline · ReAct / Function-Calling</h4>
+        <p>Full 30-step SOP in the system prompt.</p>
+        <p>All tool schemas injected at once.</p>
+        <p>Model is planner <em>and</em> executor.</p>
+        <p>Patient Intake: <strong style="color:var(--text-muted)">0%</strong> (Claude 3.5 Sonnet v2).</p>
+      </div>
+      <div class="compare-col proceda">
+        <h4>Proceda · State machine</h4>
+        <p>SOP parsed into discrete <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">SkillStep</code> objects.</p>
+        <p>Each step receives only its instructions.</p>
+        <p>Model calls tools, then <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">complete_step()</code>.</p>
+        <p>Patient Intake: <strong style="color:var(--jade)">97%</strong> (Gemini 2.5 Flash).</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>03 · two architectures</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 5 — 3-PHASE PIPELINE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">04 &nbsp;/&nbsp; The pipeline</div>
+    <h2 class="slide-title">Convert. Execute. Extract.</h2>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="step-no">Phase 1</div>
+        <h4>Convert</h4>
+        <p>LLM transforms unstructured SOP text into a structured <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.9em">SKILL.md</code>. Zero hand-editing.</p>
+      </div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step">
+        <div class="step-no">Phase 2</div>
+        <h4>Execute</h4>
+        <p>Step-by-step state machine. Model sees only the current step. Control tools gate progress; circuit breakers catch loops.</p>
+      </div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step">
+        <div class="step-no">Phase 3</div>
+        <h4>Extract</h4>
+        <p>Output fields declared up front. Model emits XML tags. Deterministic parse &mdash; no regex on prose.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>04 · the pipeline</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 6 — DIVIDER: SEVEN DESIGN DECISIONS
+     ================================================================ -->
+<section class="slide">
+  <div class="grid-bg"></div>
+  <div class="grid-bg-fade"></div>
+  <div class="slide-inner">
+    <div class="divider-num">PART II</div>
+    <div class="divider-title">Seven<br><em>design decisions.</em></div>
+    <p class="body-large" style="margin-top:1.8rem;">Each one paired with the actual code in <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.95em">src/proceda</code>.</p>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>part ii · design decisions</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 7 — D1 SOP AS STATE MACHINE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 01 &nbsp;/&nbsp; State machine</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Reduce the reasoning surface per LLM call.</h2>
+        <div class="principle">One step at a time. The model never sees the whole plan.</div>
+        <p class="body-large">The executor walks the SOP as a loop. Each iteration: prompt the LLM with one step, run the inner loop until <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">complete_step</code> fires, advance.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/internal/executor.py<span class="lines">L89&ndash;L122</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/internal/executor.py#L89-L122" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-kw">while</span> session.current_step <span class="tok-kw">&lt;=</span> self._skill.step_count:
+    step = self._skill.<span class="tok-fn">get_step</span>(session.current_step)
+
+    <span class="tok-kw">await</span> self.<span class="tok-fn">_emit</span>(
+        RunEvent.<span class="tok-fn">create</span>(
+            session.id,
+            EventType.<span class="tok-jade">STEP_STARTED</span>,
+            {<span class="tok-str">"step_index"</span>: step.index,
+             <span class="tok-str">"step_title"</span>: step.title},
+        )
+    )
+
+    <span class="tok-com"># Pre-approval gate (Decision 4)</span>
+    <span class="tok-kw">if</span> step.requires_pre_approval:
+        decision = <span class="tok-kw">await</span> self.<span class="tok-fn">_request_approval</span>(...)
+        ...
+
+    <span class="tok-com"># Run the inner LLM loop until complete_step()</span>
+    step_result = <span class="tok-kw">await</span> self.<span class="tok-fn">_execute_step</span>(step.index)
+
+    session.<span class="tok-fn">complete_current_step</span>()
+    session.<span class="tok-fn">advance_step</span>()</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D1 · state machine</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 8 — D1 EVIDENCE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 01 &nbsp;/&nbsp; Evidence</div>
+    <div class="slide-grid">
+      <div>
+        <div class="kicker">Patient Intake &middot; 6-tool dependency chain</div>
+        <div class="big-number">97<span class="pct">%</span></div>
+        <p class="big-number-label">with Gemini 2.5 Flash on a domain where baseline ReAct/FC architectures score <strong style="color:var(--text-muted)">0%</strong> &mdash; even with Claude 3.5 Sonnet v2.</p>
+      </div>
+      <div>
+        <h3 class="slide-subtitle" style="margin-bottom:1rem;">Why the gap is categorical</h3>
+        <ul class="body-bullets">
+          <li>The final tool needs outputs from all 5 prior tools.</li>
+          <li>Baselines must plan <em>and</em> execute the chain.</li>
+          <li>Proceda decomposes the chain into 6 isolated steps &mdash; each with one tool call.</li>
+          <li>Claude 4.1 Opus reaches 100% on baselines. Flash matches it on Proceda for a fraction of the cost.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D1 · evidence</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 9 — D2 CONTROL TOOLS (SCHEMA)
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 02 &nbsp;/&nbsp; Control tools</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Make progress legible.</h2>
+        <div class="principle">No implicit step detection. The model declares done.</div>
+        <p class="body-large">Two tools are injected alongside every skill: <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">complete_step</code> and <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">request_clarification</code>. The model must call one to advance.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/llm/tool_schemas.py<span class="lines">L14&ndash;L85</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/llm/tool_schemas.py#L14-L85" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code>{
+  <span class="tok-str">"type"</span>: <span class="tok-str">"function"</span>,
+  <span class="tok-str">"function"</span>: {
+    <span class="tok-str">"name"</span>: <span class="tok-jade">"complete_step"</span>,
+    <span class="tok-str">"description"</span>: (
+      <span class="tok-str">"Signal that the current step is complete. "</span>
+      <span class="tok-str">"Call this when you have finished all actions "</span>
+      <span class="tok-str">"required for the current step."</span>
+    ),
+    <span class="tok-str">"parameters"</span>: {
+      <span class="tok-str">"type"</span>: <span class="tok-str">"object"</span>,
+      <span class="tok-str">"properties"</span>: {
+        <span class="tok-str">"summary"</span>: {
+          <span class="tok-str">"type"</span>: <span class="tok-str">"string"</span>,
+          <span class="tok-str">"description"</span>: <span class="tok-str">"Brief summary of "</span>
+            <span class="tok-str">"what was accomplished."</span>,
+        }
+      },
+      <span class="tok-str">"required"</span>: [<span class="tok-str">"summary"</span>],
+    },
+  },
+}</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D2 · control tools</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 10 — D2 FALLBACKS
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 02 &nbsp;/&nbsp; Fallbacks</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Soft nudge.<br>Then hard cap.</h2>
+        <p class="body-large">If the model rambles instead of calling a tool, the harness intervenes. Two tiers: a textual nudge to remind it about <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">complete_step</code>, then a forced completion.</p>
+        <div class="callout">
+          <p><strong>Result:</strong> 100% execution-completion rate across all 10 runnable SOP-Bench domains. Zero stalls.</p>
+        </div>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/internal/executor.py<span class="lines">L294&ndash;L356</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/internal/executor.py#L294-L356" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code>text_only_count += <span class="tok-num">1</span>
+
+<span class="tok-com"># Hard tier: force-complete the step</span>
+<span class="tok-kw">if</span> text_only_count &gt;= hard_cap:
+    logger.<span class="tok-fn">warning</span>(
+        <span class="tok-str">"Step %d force-completed after %d "</span>
+        <span class="tok-str">"text-only responses"</span>,
+        step_index, text_only_count,
+    )
+    session.<span class="tok-fn">add_message</span>(RunMessage.<span class="tok-fn">create</span>(
+        <span class="tok-str">"system"</span>,
+        <span class="tok-str">"Step force-completed after too many "</span>
+        <span class="tok-str">"text-only responses."</span>,
+    ))
+    <span class="tok-kw">return</span>
+
+<span class="tok-com"># Soft tier: nudge every N text-only turns</span>
+<span class="tok-kw">if</span> text_only_count % self._max_text_before_prompt == <span class="tok-num">0</span>:
+    session.<span class="tok-fn">add_message</span>(RunMessage.<span class="tok-fn">create</span>(
+        <span class="tok-str">"user"</span>,
+        <span class="tok-str">"You seem stuck. Call `complete_step` "</span>
+        <span class="tok-str">"if done, or use a tool to make progress."</span>,
+    ))</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D2 · fallbacks</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 11 — D3 CONTEXT TRIMMING
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 03 &nbsp;/&nbsp; Forgetting</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Context is a resource &mdash; not an accumulator.</h2>
+        <div class="principle">Preserve what matters. Drop what's old. Tell the model when you did.</div>
+        <ul class="body-bullets">
+          <li>System messages: always kept.</li>
+          <li>Critical messages (step prompts, clarifications): always kept.</li>
+          <li>The rest: fill remaining budget, newest first.</li>
+          <li>Insert a truncation notice so the model knows.</li>
+        </ul>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/internal/context.py<span class="lines">L83&ndash;L130</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/internal/context.py#L83-L130" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code>critical = [m <span class="tok-kw">for</span> m <span class="tok-kw">in</span> non_system <span class="tok-kw">if</span> m.is_critical]
+non_critical = [m <span class="tok-kw">for</span> m <span class="tok-kw">in</span> non_system <span class="tok-kw">if not</span> m.is_critical]
+
+system_tokens = <span class="tok-fn">sum</span>(self.<span class="tok-fn">count_message_tokens</span>(m)
+                    <span class="tok-kw">for</span> m <span class="tok-kw">in</span> system_messages)
+critical_tokens = <span class="tok-fn">sum</span>(self.<span class="tok-fn">count_message_tokens</span>(m)
+                      <span class="tok-kw">for</span> m <span class="tok-kw">in</span> critical)
+remaining_budget = budget - system_tokens - critical_tokens
+
+<span class="tok-com"># Fill remaining budget, newest first</span>
+kept_non_critical = []
+tokens_used = <span class="tok-num">0</span>
+<span class="tok-kw">for</span> msg <span class="tok-kw">in</span> <span class="tok-fn">reversed</span>(non_critical):
+    msg_tokens = self.<span class="tok-fn">count_message_tokens</span>(msg)
+    <span class="tok-kw">if</span> tokens_used + msg_tokens &gt; remaining_budget:
+        <span class="tok-kw">break</span>
+    kept_non_critical.<span class="tok-fn">append</span>(msg)
+    tokens_used += msg_tokens
+
+<span class="tok-kw">if</span> trimmed &gt; <span class="tok-num">0</span>:
+    result.<span class="tok-fn">append</span>(RunMessage.<span class="tok-fn">create</span>(<span class="tok-str">"system"</span>, TRUNCATION_NOTICE))</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D3 · forgetting</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 12 — D4 APPROVAL GATES
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 04 &nbsp;/&nbsp; Approval gates</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Policy belongs in the harness, not the model.</h2>
+        <div class="principle">A marker in the SOP becomes a structural pause &mdash; not a polite ask.</div>
+        <p class="body-large">Two markers in <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">SKILL.md</code>: <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">[APPROVAL REQUIRED]</code> (post-step) and <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">[PRE-APPROVAL REQUIRED]</code> (pre-step). The parser detects them; the executor enforces them.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/skills/parser.py + executor.py</span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/skills/parser.py#L19-L54" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-com"># parser.py — detect markers in step content</span>
+_MARKER_PATTERNS = {
+    StepMarker.<span class="tok-jade">PRE_APPROVAL_REQUIRED</span>:
+        re.<span class="tok-fn">compile</span>(<span class="tok-str">r"\[PRE-APPROVAL\s+REQUIRED\]"</span>, re.IGNORECASE),
+    StepMarker.<span class="tok-jade">APPROVAL_REQUIRED</span>:
+        re.<span class="tok-fn">compile</span>(<span class="tok-str">r"\[APPROVAL\s+REQUIRED\]"</span>, re.IGNORECASE),
+    StepMarker.<span class="tok-jade">OPTIONAL</span>:
+        re.<span class="tok-fn">compile</span>(<span class="tok-str">r"\[OPTIONAL\]"</span>, re.IGNORECASE),
+}
+
+<span class="tok-com"># executor.py — enforce gate before step runs</span>
+<span class="tok-kw">if</span> step.requires_pre_approval:
+    decision = <span class="tok-kw">await</span> self.<span class="tok-fn">_request_approval</span>(
+        step.index, step.title, <span class="tok-str">"pre_step"</span>,
+        <span class="tok-kw">f</span><span class="tok-str">"Step {step.index}: {step.title}\n\n{step.content}"</span>,
+    )
+    <span class="tok-kw">if</span> decision == ApprovalDecision.<span class="tok-jade">REJECT</span>:
+        <span class="tok-kw">raise</span> <span class="tok-fn">ApprovalRejectedError</span>(
+            <span class="tok-kw">f</span><span class="tok-str">"Pre-approval rejected for step {step.index}"</span>)</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D4 · approval gates</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 13 — D5 OUTPUT FIELDS (PROMPT + EXTRACTOR)
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 05 &nbsp;/&nbsp; Structured output</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Structure the interface between model and downstream.</h2>
+        <div class="principle">Declare fields up front. Force XML tags. Parse deterministically.</div>
+        <p class="body-large">The prompt tells the model exactly what to emit; the extractor doesn't guess. No regex on prose.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/llm/prompts.py · output_extractor.py</span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/llm/prompts.py#L43-L54" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-com"># prompts.py — what the model is told</span>
+<span class="tok-kw">if</span> skill.output_fields:
+    fields = <span class="tok-str">", "</span>.<span class="tok-fn">join</span>(skill.output_fields)
+    tags = <span class="tok-str">", "</span>.<span class="tok-fn">join</span>(<span class="tok-kw">f</span><span class="tok-str">"&lt;{f}&gt;value&lt;/{f}&gt;"</span> <span class="tok-kw">for</span> f <span class="tok-kw">in</span> skill.output_fields)
+    parts.<span class="tok-fn">append</span>(
+        <span class="tok-kw">f</span><span class="tok-str">"CRITICAL: When completing the FINAL step, you "</span>
+        <span class="tok-kw">f</span><span class="tok-str">"MUST include each output field as literal XML "</span>
+        <span class="tok-kw">f</span><span class="tok-str">"tags in your summary: {tags}. Do not describe "</span>
+        <span class="tok-kw">f</span><span class="tok-str">"the tags in prose &mdash; emit them directly."</span>
+    )
+
+<span class="tok-com"># output_extractor.py — how it is parsed</span>
+<span class="tok-kw">def</span> <span class="tok-fn">_extract_xml_tags</span>(content, expected_set):
+    output = {}
+    <span class="tok-kw">for</span> col <span class="tok-kw">in</span> expected_set:
+        pattern = <span class="tok-kw">rf</span><span class="tok-str">"&lt;{col}&gt;(.*?)&lt;/{col}&gt;"</span>
+        match = re.<span class="tok-fn">search</span>(pattern, content, re.DOTALL)
+        <span class="tok-kw">if</span> match:
+            output[col] = match.<span class="tok-fn">group</span>(<span class="tok-num">1</span>).<span class="tok-fn">strip</span>()
+    <span class="tok-kw">return</span> output</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D5 · structured output</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 14 — D5 EVIDENCE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 05 &nbsp;/&nbsp; Evidence</div>
+    <div class="slide-grid">
+      <div>
+        <div class="kicker">Customer Service &middot; one prompt change</div>
+        <div class="big-number">+51<span class="pct">pt</span></div>
+        <p class="big-number-label"><strong style="color:var(--text-muted)">30.1%</strong> &rarr; <strong style="color:var(--jade)">81.4%</strong>. Same model, same skill. The harness gained the ability to extract the answer it already had.</p>
+      </div>
+      <div>
+        <h3 class="slide-subtitle" style="margin-bottom:1rem;">What the traces revealed</h3>
+        <ul class="body-bullets">
+          <li>100% ECR &mdash; every task ran to completion.</li>
+          <li>But TSR sat at 30%. The model <em>had</em> the right answer.</li>
+          <li>The extractor was matching <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">account_status: ACTIVE</code> from a tool result.</li>
+          <li>It missed <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">final_resolution_status: RESOLVED</code> in the agent's free-form summary.</li>
+          <li>Force XML tags. Problem disappears.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D5 · evidence</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 15 — D6 GUARD RAILS
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 06 &nbsp;/&nbsp; Guard rails</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Bounded execution is a feature.</h2>
+        <div class="principle">Constants you can read. Failure modes you can name.</div>
+        <ul class="body-bullets">
+          <li>Text-only soft nudge &mdash; every 5 responses.</li>
+          <li>Text-only hard cap &mdash; force-complete after 15.</li>
+          <li>Total iterations per step &mdash; 50 max.</li>
+          <li>App tool calls per step &mdash; 20 max, then error-recovery (retry/skip/cancel).</li>
+        </ul>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/internal/executor.py<span class="lines">L36&ndash;L68</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/internal/executor.py#L36-L68" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-com"># Guard-rail constants</span>
+<span class="tok-jade">MAX_TEXT_ONLY_ITERATIONS</span> = <span class="tok-num">5</span>
+<span class="tok-jade">MAX_TOOL_CALL_ITERATIONS</span> = <span class="tok-num">50</span>
+
+<span class="tok-kw">class</span> <span class="tok-fn">Executor</span>:
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(
+        self,
+        skill: Skill,
+        session: RunSession,
+        llm: LLMRuntime,
+        tool_executor: ToolExecutor | <span class="tok-kw">None</span>,
+        human: HumanInterface,
+        emit: EmitFn,
+        context_manager: ContextManager | <span class="tok-kw">None</span> = <span class="tok-kw">None</span>,
+        tool_schemas: <span class="tok-fn">list</span>[<span class="tok-fn">dict</span>[<span class="tok-fn">str</span>, Any]] | <span class="tok-kw">None</span> = <span class="tok-kw">None</span>,
+        max_text_responses_before_prompt: <span class="tok-fn">int</span> = <span class="tok-num">3</span>,
+        max_tool_calls_per_step: <span class="tok-fn">int</span> = <span class="tok-num">20</span>,
+    ) -&gt; <span class="tok-kw">None</span>:
+        ...</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D6 · guard rails</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 16 — D7 OBSERVABILITY
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Decision 07 &nbsp;/&nbsp; Observability</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Instrument everything.</h2>
+        <div class="principle">Every runtime transition emits a structured event. One JSONL file per run.</div>
+        <p class="body-large">Trace analysis is where breakthroughs come from &mdash; <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">output_fields</code>, benchmark labeling bugs, the thinking-model paradox.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/events.py · store/event_log.py</span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/events.py#L15-L70" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-kw">class</span> <span class="tok-fn">EventType</span>(enum.Enum):
+    <span class="tok-jade">RUN_STARTED</span>             = <span class="tok-str">"run.started"</span>
+    <span class="tok-jade">RUN_COMPLETED</span>           = <span class="tok-str">"run.completed"</span>
+    <span class="tok-jade">STEP_STARTED</span>            = <span class="tok-str">"step.started"</span>
+    <span class="tok-jade">STEP_COMPLETED</span>          = <span class="tok-str">"step.completed"</span>
+    <span class="tok-jade">TOOL_CALLED</span>             = <span class="tok-str">"tool.called"</span>
+    <span class="tok-jade">TOOL_COMPLETED</span>          = <span class="tok-str">"tool.completed"</span>
+    <span class="tok-jade">APPROVAL_REQUESTED</span>      = <span class="tok-str">"approval.requested"</span>
+    <span class="tok-jade">CLARIFICATION_REQUESTED</span> = <span class="tok-str">"clarification.requested"</span>
+    <span class="tok-com"># + LLM usage, status, context, message.* ...</span>
+
+<span class="tok-com"># event_log.py — one event per line, append-only</span>
+<span class="tok-kw">async def</span> <span class="tok-fn">handle</span>(self, event: RunEvent) -&gt; <span class="tok-kw">None</span>:
+    self._file.<span class="tok-fn">write</span>(event.<span class="tok-fn">to_json</span>() + <span class="tok-str">"\n"</span>)
+    self._file.<span class="tok-fn">flush</span>()</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>D7 · observability</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 17 — THE SKILL.MD FORMAT
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Anatomy &nbsp;/&nbsp; The SKILL.md</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">An SOP is a markdown file.</h2>
+        <p class="body-large">YAML frontmatter declares the skill, its required tools, and optional output fields. Numbered <code style="font-family:var(--font-mono);color:var(--jade);font-size:0.86em">### Step N</code> headings define the procedure. Markers gate approval.</p>
+        <p class="body-large" style="margin-top:1rem;">No DSL. No graph builder. Just a file an operator can read.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">examples/toy-greeting/SKILL.md</span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/examples/toy-greeting/SKILL.md" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code><span class="tok-com">---</span>
+<span class="tok-jade">name</span>: toy-greeting
+<span class="tok-jade">description</span>: A simple greeting workflow
+<span class="tok-jade">required_tools</span>:
+  - time-left__get_time_remaining
+<span class="tok-com">---</span>
+
+<span class="tok-kw">### Step 1: Say Hello</span>
+Say <span class="tok-str">"Hello!"</span> to the user in a friendly way.
+
+<span class="tok-kw">### Step 2: Ask How They're Doing</span>
+Ask the user how they're doing today. Wait for their response.
+
+<span class="tok-kw">### Step 3: Corporate HR Reframe</span>
+Reframe the user's reply using corporate HR speak.
+
+<span class="tok-kw">### Step 4: Show Time Remaining</span>
+Show time left in the day, week, month, and year. Use
+the available tools to display this visually.
+
+<span class="tok-kw">### Step 5: Nietzsche Overview</span>
+<span class="tok-num">[PRE-APPROVAL REQUIRED]</span>
+Provide a one sentence overview of Nietzsche's philosophy.</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>anatomy · skill.md</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 18 — THE SYSTEM PROMPT
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Anatomy &nbsp;/&nbsp; The system prompt</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">What the model is told, once.</h2>
+        <p class="body-large">Every run opens with this preamble. It names the skill, the control tools, the rules around clarifications and tools, and &mdash; when relevant &mdash; the output-field contract.</p>
+        <div class="callout">
+          <p><strong>Notice:</strong> the prompt is short, declarative, and infrastructural. The model isn't asked to plan. It's told the shape of the game.</p>
+        </div>
+      </div>
+      <div class="code-card">
+        <div class="code-card-header">
+          <span class="file">src/proceda/llm/prompts.py<span class="lines">L9&ndash;L40</span></span>
+          <a href="https://github.com/vivekhaldar/proceda/blob/5dfc2b9/src/proceda/llm/prompts.py#L9-L78" target="_blank" rel="noopener">View source &rarr;</a>
+        </div>
+<pre><code>You are executing the skill: {skill.name}
+Description: {skill.description}
+
+You must follow the steps in order. For each step:
+<span class="tok-num">1.</span> Read the step instructions carefully
+<span class="tok-num">2.</span> Use the available tools to accomplish the step's goals
+<span class="tok-num">3.</span> Call `complete_step` with a summary when the step is done
+<span class="tok-num">4.</span> If you need clarification, call `request_clarification`
+
+Important rules:
+- Complete one step at a time
+- Do not skip steps unless they are marked [OPTIONAL]
+- Do not proceed to the next step until you call `complete_step`
+- If a step asks you to ask the user something, you MUST call
+  `request_clarification`. Printing the question as text does
+  NOT pause for input. Only `request_clarification` reaches the user.
+- If a step instructs you to call a specific tool, you MUST call it.
+- If you determine the final answer is already known, call
+  `skip_remaining_steps` &mdash; this ends the procedure immediately.</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>anatomy · system prompt</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 19 — DIVIDER: RESULTS
+     ================================================================ -->
+<section class="slide">
+  <div class="grid-bg"></div>
+  <div class="grid-bg-fade"></div>
+  <div class="slide-inner">
+    <div class="divider-num">PART III</div>
+    <div class="divider-title">SOP-Bench<br><em>results.</em></div>
+    <p class="body-large" style="margin-top:1.8rem;">10 domains. State-of-the-art on 4 outright. 8 of 10 when measured fairly.</p>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>part iii · results</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 20 — SOTA ON 4
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Results &nbsp;/&nbsp; Raw TSR</div>
+    <h2 class="slide-title">SOTA on four domains, no caveats.</h2>
+    <div class="gains-grid">
+      <div class="gain">
+        <div class="domain">Aircraft Inspection</div>
+        <div class="score">100<span class="pct">%</span></div>
+        <div class="model">Gemini 2.5 Flash</div>
+        <div class="delta">+1 pt vs prior best</div>
+      </div>
+      <div class="gain">
+        <div class="domain">Referral Abuse v2</div>
+        <div class="score">99.0<span class="pct">%</span></div>
+        <div class="model">Gemini 3.1 Pro</div>
+        <div class="delta">+1 pt vs prior best</div>
+      </div>
+      <div class="gain">
+        <div class="domain">Dangerous Goods</div>
+        <div class="score">94.2<span class="pct">%</span></div>
+        <div class="model">Gemini 2.5 Flash</div>
+        <div class="delta">+7.2 pt vs prior best</div>
+      </div>
+      <div class="gain">
+        <div class="domain">Customer Service</div>
+        <div class="score">81.4<span class="pct">%</span></div>
+        <div class="model">Gemini 2.5 Flash</div>
+        <div class="delta">+2.4 pt vs prior best</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>results · sota</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 21 — CHART: SOP-CONSISTENT TSR vs BASELINE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Results &nbsp;/&nbsp; SOP-consistent &nbsp;/&nbsp; Chart</div>
+    <div class="chart-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" font-family="'Crimson Pro', Georgia, serif" aria-label="Proceda SOP-Consistent TSR vs Best Published Baseline">
+        <style>
+          .ct { font-size: 15px; font-weight: 600; fill: #f0ede8; font-family: 'Fraunces', Georgia, serif; }
+          .cl { font-size: 11px; fill: #6a6875; }
+          .cv { font-size: 10px; font-weight: 600; }
+          .cax { stroke: #2a2b33; stroke-width: 1; }
+          .cg { stroke: #1a1b22; stroke-width: 0.5; }
+          .bp { fill: #00D4A1; }
+          .bb { fill: #2a2b33; }
+          .clt { font-size: 12px; fill: #b0ada6; }
+          .cs { font-size: 9px; font-weight: 700; fill: #00D4A1; }
+        </style>
+        <text x="400" y="25" text-anchor="middle" class="ct">Proceda SOP-Consistent TSR vs Best Published Baseline</text>
+        <rect x="235" y="38" width="12" height="12" class="bp" rx="2"/>
+        <text x="251" y="49" class="clt">Proceda (SOP-consistent)</text>
+        <rect x="430" y="38" width="12" height="12" class="bb" rx="2"/>
+        <text x="446" y="49" class="clt">Best Baseline (paper)</text>
+        <line x1="180" y1="70" x2="180" y2="380" class="cax"/>
+        <line x1="180" y1="380" x2="780" y2="380" class="cax"/>
+        <line x1="180" y1="305" x2="780" y2="305" class="cg"/>
+        <line x1="180" y1="230" x2="780" y2="230" class="cg"/>
+        <line x1="180" y1="155" x2="780" y2="155" class="cg"/>
+        <line x1="180" y1="80" x2="780" y2="80" class="cg"/>
+        <text x="175" y="384" text-anchor="end" class="cl">0%</text>
+        <text x="175" y="309" text-anchor="end" class="cl">25%</text>
+        <text x="175" y="234" text-anchor="end" class="cl">50%</text>
+        <text x="175" y="159" text-anchor="end" class="cl">75%</text>
+        <text x="175" y="84" text-anchor="end" class="cl">100%</text>
+        <rect x="192" y="80" width="24" height="300" class="bp" rx="2"/>
+        <rect x="218" y="83" width="24" height="297" class="bb" rx="2"/>
+        <text x="217" y="73" text-anchor="middle" class="cv" fill="#00D4A1">100</text>
+        <text x="217" y="398" text-anchor="middle" class="cl" transform="rotate(-40 217 398)">Aircraft Insp.</text>
+        <text x="217" y="63" text-anchor="middle" class="cs">SOTA</text>
+        <rect x="252" y="83" width="24" height="297" class="bp" rx="2"/>
+        <rect x="278" y="86" width="24" height="294" class="bb" rx="2"/>
+        <text x="277" y="76" text-anchor="middle" class="cv" fill="#00D4A1">99</text>
+        <text x="277" y="398" text-anchor="middle" class="cl" transform="rotate(-40 277 398)">Referral v2</text>
+        <text x="277" y="63" text-anchor="middle" class="cs">SOTA</text>
+        <rect x="312" y="80" width="24" height="300" class="bp" rx="2"/>
+        <rect x="338" y="86" width="24" height="294" class="bb" rx="2"/>
+        <text x="337" y="73" text-anchor="middle" class="cv" fill="#00D4A1">100*</text>
+        <text x="337" y="398" text-anchor="middle" class="cl" transform="rotate(-40 337 398)">Referral v1</text>
+        <text x="337" y="63" text-anchor="middle" class="cs">SOTA*</text>
+        <rect x="372" y="80" width="24" height="300" class="bp" rx="2"/>
+        <rect x="398" y="94" width="24" height="286" class="bb" rx="2"/>
+        <text x="397" y="73" text-anchor="middle" class="cv" fill="#00D4A1">~100*</text>
+        <text x="397" y="398" text-anchor="middle" class="cl" transform="rotate(-40 397 398)">Video Classif.</text>
+        <text x="397" y="63" text-anchor="middle" class="cs">SOTA*</text>
+        <rect x="432" y="83.6" width="24" height="296.4" class="bp" rx="2"/>
+        <rect x="458" y="122" width="24" height="258" class="bb" rx="2"/>
+        <text x="457" y="76" text-anchor="middle" class="cv" fill="#00D4A1">98.8*</text>
+        <text x="457" y="398" text-anchor="middle" class="cl" transform="rotate(-40 457 398)">Traffic Spoof.</text>
+        <text x="457" y="63" text-anchor="middle" class="cs">SOTA*</text>
+        <rect x="492" y="89" width="24" height="291" class="bp" rx="2"/>
+        <rect x="518" y="80" width="24" height="300" class="bb" rx="2"/>
+        <text x="517" y="82" text-anchor="middle" class="cv" fill="#00D4A1">97</text>
+        <text x="517" y="398" text-anchor="middle" class="cl" transform="rotate(-40 517 398)">Patient Intake</text>
+        <rect x="552" y="97.4" width="24" height="282.6" class="bp" rx="2"/>
+        <rect x="578" y="119" width="24" height="261" class="bb" rx="2"/>
+        <text x="577" y="90" text-anchor="middle" class="cv" fill="#00D4A1">94.2</text>
+        <text x="577" y="398" text-anchor="middle" class="cl" transform="rotate(-40 577 398)">Dangerous Gds.</text>
+        <text x="577" y="80" text-anchor="middle" class="cs">SOTA</text>
+        <rect x="612" y="135.8" width="24" height="244.2" class="bp" rx="2"/>
+        <rect x="638" y="143" width="24" height="237" class="bb" rx="2"/>
+        <text x="637" y="129" text-anchor="middle" class="cv" fill="#00D4A1">81.4</text>
+        <text x="637" y="398" text-anchor="middle" class="cl" transform="rotate(-40 637 398)">Customer Svc.</text>
+        <text x="637" y="119" text-anchor="middle" class="cs">SOTA</text>
+        <rect x="672" y="186.8" width="24" height="193.2" class="bp" rx="2"/>
+        <rect x="698" y="206" width="24" height="174" class="bb" rx="2"/>
+        <text x="697" y="180" text-anchor="middle" class="cv" fill="#00D4A1">64.4*</text>
+        <text x="697" y="398" text-anchor="middle" class="cl" transform="rotate(-40 697 398)">KYB</text>
+        <text x="697" y="170" text-anchor="middle" class="cs">SOTA*</text>
+        <rect x="732" y="80" width="24" height="300" class="bp" rx="2"/>
+        <text x="757" y="73" text-anchor="middle" class="cv" fill="#00D4A1">100*</text>
+        <text x="757" y="398" text-anchor="middle" class="cl" transform="rotate(-40 757 398)">Order Fulfil.</text>
+        <text x="757" y="200" text-anchor="middle" class="cl" style="font-style:italic;">no baseline</text>
+      </svg>
+      <p class="chart-caption">* SOP-consistent TSR excludes tasks where the CSV ground truth contradicts SOP rules. Baseline measured on all tasks.</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>results · chart</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 22 — FULL 10-DOMAIN RESULTS TABLE
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Results &nbsp;/&nbsp; Full table</div>
+    <h2 class="slide-title" style="font-size:clamp(1.6rem,2.8vw,2.2rem);margin-bottom:0.4rem;">Every domain, every score, every model.</h2>
+    <table class="results full">
+      <thead>
+        <tr>
+          <th>Domain</th>
+          <th>Model</th>
+          <th style="text-align:right;">Raw TSR</th>
+          <th style="text-align:right;">SOP-Consistent</th>
+          <th>Best Baseline</th>
+          <th>Delta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="domain">Aircraft Inspection</td>
+          <td class="model">Gemini 2.5 Flash</td>
+          <td class="num">100%</td>
+          <td class="num">100%</td>
+          <td class="baseline">99% &mdash; Claude 3.7 Sonnet</td>
+          <td><span class="pill">+1 pt SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Referral Abuse v2</td>
+          <td class="model">Gemini 3.1 Pro</td>
+          <td class="num">99.0%</td>
+          <td class="num">99.0%</td>
+          <td class="baseline">98% &mdash; Claude 4 Opus</td>
+          <td><span class="pill">+1 pt SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Patient Intake</td>
+          <td class="model">Gemini 2.5 Flash</td>
+          <td class="num">97.0%</td>
+          <td class="num">97.0%</td>
+          <td class="baseline">100% &mdash; Claude 4.1 Opus</td>
+          <td><span class="pill dim">&minus;3 pt</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Referral Abuse v1</td>
+          <td class="model">Gemini 3 Flash</td>
+          <td class="num">95.5%</td>
+          <td class="num">100%*</td>
+          <td class="baseline">98% &mdash; Claude 3.5 v2</td>
+          <td><span class="pill">+2 pt* SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Dangerous Goods</td>
+          <td class="model">Gemini 2.5 Flash</td>
+          <td class="num">94.2%</td>
+          <td class="num">94.2%</td>
+          <td class="baseline">87% &mdash; Claude 4 Sonnet</td>
+          <td><span class="pill">+7.2 pt SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Order Fulfillment</td>
+          <td class="model">Gemini 3 Flash</td>
+          <td class="num">86.7%</td>
+          <td class="num">100%*</td>
+          <td class="baseline" style="font-style:italic;">no published baseline</td>
+          <td><span class="pill dim">no baseline</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Video Classification</td>
+          <td class="model">Gemini 3 Flash</td>
+          <td class="num">83.2%</td>
+          <td class="num">~100%*</td>
+          <td class="baseline">95% &mdash; Claude 4 Sonnet</td>
+          <td><span class="pill">+5 pt* SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Customer Service</td>
+          <td class="model">Gemini 2.5 Flash</td>
+          <td class="num">81.4%</td>
+          <td class="num">81.4%</td>
+          <td class="baseline">79% &mdash; Llama 3.3 70B</td>
+          <td><span class="pill">+2.4 pt SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Traffic Spoofing</td>
+          <td class="model">Gemini 3 Flash</td>
+          <td class="num">79.5%</td>
+          <td class="num">98.8%*</td>
+          <td class="baseline">86% &mdash; Claude 4.5 Sonnet</td>
+          <td><span class="pill">+12.8 pt* SOTA</span></td>
+        </tr>
+        <tr>
+          <td class="domain">Know Your Business</td>
+          <td class="model">Gemini 3.1 Pro</td>
+          <td class="num">42.2%</td>
+          <td class="num">64.4%*</td>
+          <td class="baseline">58% &mdash; Claude 4.5 Opus</td>
+          <td><span class="pill">+6.4 pt* SOTA</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="chart-caption" style="text-align:left;margin-top:0.6rem;">* SOP-consistent score after excluding tasks with mislabeled CSV ground truth.</p>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>results · full table</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 22 — COST CURVE INVERSION
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Findings &nbsp;/&nbsp; Cost curve</div>
+    <div class="slide-grid">
+      <div>
+        <h2 class="slide-title">Cheap models, on rails, beat expensive ones, off them.</h2>
+        <div class="principle">For procedural workflows, architecture replaces capability.</div>
+        <p class="body-large"><strong style="color:var(--jade)">Gemini 2.5 Flash</strong> &mdash; the cheapest tier &mdash; takes 4 of 10 domains, beating Claude 4 Sonnet and Llama 3.3 70B.</p>
+      </div>
+      <div>
+        <table class="results">
+          <thead>
+            <tr><th>Tier</th><th>Domains</th><th>Beats</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Gemini 2.5 Flash<br><span style="color:var(--text-muted);font-size:0.85em">lowest cost</span></td>
+              <td class="num">4</td>
+              <td class="dim">Claude 4 Sonnet, 3.7 Sonnet, Llama 3.3 70B</td>
+            </tr>
+            <tr>
+              <td>Gemini 3 Flash<br><span style="color:var(--text-muted);font-size:0.85em">low cost</span></td>
+              <td class="num">4</td>
+              <td class="dim">Claude 4.5 Sonnet, 4 Sonnet, 3.5 v2</td>
+            </tr>
+            <tr>
+              <td>Gemini 3.1 Pro<br><span style="color:var(--text-muted);font-size:0.85em">mid cost</span></td>
+              <td class="num">2</td>
+              <td class="dim">Claude 4 Opus, 4.5 Opus</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>findings · cost curve</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 23 — THINKING MODEL PARADOX
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Findings &nbsp;/&nbsp; The paradox</div>
+    <h2 class="slide-title">Thinking models lose on rails.</h2>
+    <p class="body-large" style="max-width:50ch;">Referral Abuse v2 &mdash; same skill, three Gemini models. The one with extended reasoning trails the ones without.</p>
+    <table class="results" style="max-width:780px;margin-top:2rem;">
+      <thead>
+        <tr><th>Model</th><th>Type</th><th>TSR</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Gemini 2.5 Pro</td>
+          <td class="dim">thinking (extended reasoning)</td>
+          <td class="num dim">74.5%</td>
+        </tr>
+        <tr>
+          <td>Gemini 3 Flash</td>
+          <td class="dim">non-thinking, cheap</td>
+          <td class="num">88.5%</td>
+        </tr>
+        <tr>
+          <td>Gemini 3.1 Pro</td>
+          <td class="dim">non-thinking, mid-tier</td>
+          <td class="num jade">99.0%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout" style="max-width:46ch;">
+      <p>Thinking models spend compute deciding <em>what to do</em>. When the harness already specifies what to do, the extra reasoning is wasted &mdash; and sometimes wrong.</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>findings · paradox</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 24 — 100% ECR
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">Findings &nbsp;/&nbsp; Reliability</div>
+    <div class="slide-grid">
+      <div>
+        <div class="big-number">100<span class="pct">%</span></div>
+        <p class="big-number-label">Execution Completion Rate. Across all 10 runnable SOP-Bench domains.</p>
+      </div>
+      <div>
+        <h3 class="slide-subtitle" style="margin-bottom:1rem;">What this actually means</h3>
+        <ul class="body-bullets">
+          <li>Zero crashes.</li>
+          <li>Zero stalls.</li>
+          <li>Every task runs to a structured terminal state.</li>
+          <li>Failures are reasoning or extraction issues &mdash; never execution.</li>
+          <li>For enterprise SOPs, this matters as much as accuracy.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>findings · reliability</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 25 — TAKEAWAYS
+     ================================================================ -->
+<section class="slide">
+  <div class="slide-inner">
+    <div class="eyebrow">05 &nbsp;/&nbsp; Takeaways</div>
+    <h2 class="slide-title">Five things to remember.</h2>
+    <ul class="body-bullets" style="max-width:60ch;font-size:1.15rem;">
+      <li><strong style="color:var(--text)">Harness &gt; model.</strong> For procedural work, what the model is allowed to do matters more than which model it is.</li>
+      <li><strong style="color:var(--text)">Decompose, then constrain.</strong> One step at a time, with explicit progress signals and circuit breakers.</li>
+      <li><strong style="color:var(--text)">Forget on purpose.</strong> Context is a budget; trim newest-first with critical-message preservation.</li>
+      <li><strong style="color:var(--text)">Structure the output.</strong> XML tags + deterministic parse. The 30&rarr;81% jump was a prompt change, not a model change.</li>
+      <li><strong style="color:var(--text)">Instrument or you're guessing.</strong> Every breakthrough came out of the JSONL traces.</li>
+    </ul>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>05 · takeaways</span>
+  </div>
+</section>
+
+<!-- ================================================================
+     SLIDE 26 — CLOSE / LINKS
+     ================================================================ -->
+<section class="slide">
+  <div class="grid-bg"></div>
+  <div class="grid-bg-fade"></div>
+  <div class="slide-inner">
+    <div class="eyebrow">Fin</div>
+    <h2 class="slide-title">Turn your SOPs into reliable AI workflows.</h2>
+    <ul class="link-list">
+      <li><a href="https://enchiridionlabs.online/sop-execution-engine-design.html" target="_blank" rel="noopener">Design notes &rarr;</a> &nbsp; enchiridionlabs.online/sop-execution-engine-design</li>
+      <li><a href="https://enchiridionlabs.online/sop-bench-results.html" target="_blank" rel="noopener">SOP-Bench results &rarr;</a> &nbsp; enchiridionlabs.online/sop-bench-results</li>
+      <li><a href="https://github.com/vivekhaldar/proceda" target="_blank" rel="noopener">Source &rarr;</a> &nbsp; github.com/vivekhaldar/proceda</li>
+      <li><a href="https://enchiridionlabs.online/" target="_blank" rel="noopener">Enchiridion Labs &rarr;</a> &nbsp; enchiridionlabs.online</li>
+    </ul>
+  </div>
+  <div class="slide-footer">
+    <span class="brand">Enchiridion Labs<span class="dot"></span>Proceda</span>
+    <span>fin</span>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function() {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  const progress = document.getElementById('progress');
+  const hudCurrent = document.getElementById('hud-current');
+  const hudTotal = document.getElementById('hud-total');
+  const overlayHelp = document.getElementById('overlay-help');
+  const overlayToc = document.getElementById('overlay-toc');
+  const pickerGrid = document.getElementById('picker-grid');
+  hudTotal.textContent = String(total).padStart(2, '0');
+
+  // ---------- Extract a title for each slide for the TOC ----------
+  function readableText(el) {
+    if (!el) return '';
+    // Replace <br> with a space so titles split across lines don't smash together.
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach(br => br.replaceWith(' '));
+    return clone.textContent.replace(/\s+/g, ' ').trim();
+  }
+  function extractMeta(slide, idx) {
+    const eyebrowEl = slide.querySelector('.eyebrow, .divider-num, .deck-eyebrow');
+    const titleEl = slide.querySelector(
+      'h1.deck-title, h2.slide-title, .divider-title, .pull-quote, .big-number-label, .big-number'
+    );
+    const eyebrow = readableText(eyebrowEl);
+    let title = readableText(titleEl);
+    if (titleEl && titleEl.classList.contains('big-number')) {
+      const labelEl = slide.querySelector('.big-number-label');
+      if (labelEl) title = readableText(labelEl);
+    }
+    if (!title) title = '(slide ' + (idx + 1) + ')';
+    if (title.length > 80) title = title.slice(0, 77) + '…';
+    return { eyebrow, title };
+  }
+  const slideMeta = slides.map(extractMeta);
+
+  // ---------- Build TOC ----------
+  slideMeta.forEach((m, i) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'picker-card';
+    card.dataset.index = String(i);
+    card.innerHTML =
+      '<div class="picker-card-num">' + String(i + 1).padStart(2, '0') + ' &nbsp;/&nbsp; ' + (m.eyebrow || '&middot;') + '</div>' +
+      '<div class="picker-card-title">' + (m.title || '') + '</div>';
+    card.addEventListener('click', () => { go(i); closeOverlays(); });
+    pickerGrid.appendChild(card);
+  });
+  const pickerCards = Array.from(pickerGrid.children);
+
+  // ---------- Navigation ----------
+  function readHashIndex() {
+    const h = (location.hash || '').replace('#', '');
+    const n = parseInt(h, 10);
+    if (Number.isFinite(n) && n >= 1 && n <= total) return n - 1;
+    return 0;
+  }
+  let index = readHashIndex();
+
+  function render() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === index));
+    hudCurrent.textContent = String(index + 1).padStart(2, '0');
+    progress.style.width = ((index + 1) / total * 100) + '%';
+    pickerCards.forEach((c, i) => c.classList.toggle('current', i === index));
+    const newHash = '#' + (index + 1);
+    if (location.hash !== newHash) history.replaceState(null, '', newHash);
+  }
+  function go(n) { index = Math.max(0, Math.min(total - 1, n)); render(); }
+
+  // ---------- Overlay management ----------
+  let pickerFocus = 0;
+  function openHelp() { closeOverlays(); overlayHelp.classList.add('visible'); overlayHelp.setAttribute('aria-hidden', 'false'); }
+  function openToc() {
+    closeOverlays();
+    overlayToc.classList.add('visible');
+    overlayToc.setAttribute('aria-hidden', 'false');
+    pickerFocus = index;
+    focusPicker(pickerFocus);
+  }
+  function closeOverlays() {
+    overlayHelp.classList.remove('visible');
+    overlayHelp.setAttribute('aria-hidden', 'true');
+    overlayToc.classList.remove('visible');
+    overlayToc.setAttribute('aria-hidden', 'true');
+  }
+  function tocOpen() { return overlayToc.classList.contains('visible'); }
+  function helpOpen() { return overlayHelp.classList.contains('visible'); }
+
+  function focusPicker(i) {
+    pickerCards.forEach((c, n) => c.classList.toggle('focused', n === i));
+    const target = pickerCards[i];
+    if (target) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+  function pickerColumns() {
+    // Infer columns from layout
+    if (pickerCards.length < 2) return 1;
+    const a = pickerCards[0].getBoundingClientRect();
+    let cols = 0;
+    for (const c of pickerCards) {
+      if (Math.abs(c.getBoundingClientRect().top - a.top) < 2) cols++;
+      else break;
+    }
+    return Math.max(1, cols);
+  }
+
+  // Close overlays when clicking on their backdrop
+  [overlayHelp, overlayToc].forEach(o => {
+    o.addEventListener('click', (e) => { if (e.target === o) closeOverlays(); });
+  });
+
+  // ---------- "g N Enter" jump-to-slide buffer ----------
+  let gBuffer = '';
+  let gTimer = null;
+  function resetGBuffer() { gBuffer = ''; clearTimeout(gTimer); }
+  function feedGBuffer(d) {
+    gBuffer += d;
+    clearTimeout(gTimer);
+    gTimer = setTimeout(resetGBuffer, 1400);
+  }
+
+  // ---------- Keyboard ----------
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+
+    // Help overlay: only Esc / ? close it
+    if (helpOpen()) {
+      if (k === 'Escape' || k === '?') { e.preventDefault(); closeOverlays(); }
+      return;
+    }
+
+    // TOC overlay: arrow/enter navigation within picker
+    if (tocOpen()) {
+      if (k === 'Escape' || k === 't' || k === 'T') { e.preventDefault(); closeOverlays(); return; }
+      if (k === 'Enter') { e.preventDefault(); go(pickerFocus); closeOverlays(); return; }
+      const cols = pickerColumns();
+      let next = pickerFocus;
+      if (k === 'ArrowRight' || k === 'l') next = Math.min(total - 1, pickerFocus + 1);
+      else if (k === 'ArrowLeft' || k === 'h') next = Math.max(0, pickerFocus - 1);
+      else if (k === 'ArrowDown' || k === 'j') next = Math.min(total - 1, pickerFocus + cols);
+      else if (k === 'ArrowUp' || k === 'k') next = Math.max(0, pickerFocus - cols);
+      else if (k === 'Home') next = 0;
+      else if (k === 'End') next = total - 1;
+      else return;
+      e.preventDefault();
+      pickerFocus = next;
+      focusPicker(pickerFocus);
+      return;
+    }
+
+    // Top-level shortcuts
+    if (k === '?') { e.preventDefault(); openHelp(); return; }
+    if (k === 't' || k === 'T') { e.preventDefault(); openToc(); return; }
+    if (k === 'Escape') { e.preventDefault(); resetGBuffer(); return; }
+
+    // "g N Enter" jump
+    if (k === 'g' || k === 'G') { e.preventDefault(); gBuffer = 'g'; clearTimeout(gTimer); gTimer = setTimeout(resetGBuffer, 1400); return; }
+    if (gBuffer.startsWith('g')) {
+      if (/^[0-9]$/.test(k)) { e.preventDefault(); feedGBuffer(k); return; }
+      if (k === 'Enter') {
+        e.preventDefault();
+        const n = parseInt(gBuffer.slice(1), 10);
+        if (Number.isFinite(n) && n >= 1 && n <= total) go(n - 1);
+        resetGBuffer();
+        return;
+      }
+      if (k === 'Backspace') { e.preventDefault(); gBuffer = gBuffer.slice(0, -1); if (gBuffer === '') resetGBuffer(); return; }
+    }
+
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'j' || k === 'l') {
+      e.preventDefault(); go(index + 1);
+    } else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'k' || k === 'h') {
+      e.preventDefault(); go(index - 1);
+    } else if (k === 'Home') {
+      e.preventDefault(); go(0);
+    } else if (k === 'End') {
+      e.preventDefault(); go(total - 1);
+    } else if (k === 'f' || k === 'F') {
+      e.preventDefault();
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    } else if (/^[0-9]$/.test(k)) {
+      const n = parseInt(k, 10);
+      if (n === 0) go(9); else go(n - 1);
+    }
+  });
+
+  // Touch navigation (slides only — overlays use native scrolling)
+  let touchStartX = null;
+  document.addEventListener('touchstart', (e) => {
+    if (tocOpen() || helpOpen()) return;
+    if (e.touches.length === 1) touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (touchStartX === null) return;
+    const dx = (e.changedTouches[0].clientX - touchStartX);
+    if (Math.abs(dx) > 50) go(index + (dx < 0 ? 1 : -1));
+    touchStartX = null;
+  }, { passive: true });
+
+  window.addEventListener('hashchange', () => { index = readHashIndex(); render(); });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

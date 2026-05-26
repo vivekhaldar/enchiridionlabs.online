@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Specialized Harness Engineering &mdash; Enchiridion Labs</title>
+<meta name="description" content="Principles for building specialized LLM harnesses that turn open-ended model capability into constrained, measurable, domain-specific work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-warm: #0d0e13;
+    --surface: #131419;
+    --surface-hover: #1a1b22;
+    --surface-border: rgba(240, 237, 232, 0.06);
+    --surface-border-hover: rgba(0, 212, 161, 0.25);
+
+    --text: #f0ede8;
+    --text-secondary: #b0ada6;
+    --text-muted: #6a6875;
+    --text-faint: #5e5d68;
+
+    --jade: #00D4A1;
+    --jade-dim: rgba(0, 212, 161, 0.12);
+    --jade-glow: rgba(0, 212, 161, 0.08);
+    --amber: #E8A94A;
+    --amber-dim: rgba(232, 169, 74, 0.12);
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    font-size: 17px;
+    scroll-behavior: smooth;
+    scroll-padding-top: 10rem;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    line-height: 1.72;
+    font-weight: 300;
+    background:
+      linear-gradient(180deg, rgba(0, 212, 161, 0.035), transparent 18rem),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--jade);
+    color: var(--bg);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.018;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  a {
+    color: var(--jade);
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  a:hover { color: var(--text); }
+
+  .site-nav {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    background: rgba(10, 11, 15, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .site-nav-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .site-nav a {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .site-nav a:hover { color: var(--jade); }
+
+  .site-nav-links {
+    display: flex;
+    gap: 1.2rem;
+    list-style: none;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 3.35rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.03;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .subtitle {
+    font-size: 1.18rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    max-width: 680px;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+
+  .byline {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  .byline a { color: var(--jade); text-decoration: none; font-weight: 500; }
+  .byline a:hover { color: var(--text); }
+
+  .hero-card {
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    background: var(--jade-dim);
+    padding: 1.25rem;
+  }
+
+  .hero-card-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.8rem;
+  }
+
+  .hero-card p {
+    font-size: 0.94rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-card p:last-child { margin-bottom: 0; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 780px);
+    gap: 4rem;
+    align-items: start;
+    margin-top: 3rem;
+  }
+
+  .toc {
+    position: sticky;
+    top: 5rem;
+    padding-top: 0.25rem;
+  }
+
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc li { margin-bottom: 0.45rem; }
+
+  .toc a {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+
+  .toc a:hover { color: var(--jade); }
+
+  .content p { margin-bottom: 1rem; }
+
+  .content section[id] { scroll-margin-top: 10rem; }
+
+  .content strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    color: var(--jade);
+    border: 1px solid var(--surface-border);
+  }
+
+  .content em { color: var(--text-secondary); }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.2;
+    color: var(--text);
+    margin-top: 3.25rem;
+    margin-bottom: 1rem;
+  }
+
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--surface-border);
+    margin: 3rem 0;
+  }
+
+  .summary-box {
+    background: var(--jade-dim);
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    padding: 1.35rem 1.5rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .summary-box p {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+
+  .summary-box p:last-child { margin-bottom: 0; }
+
+  .spectrum {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 1.5rem 0 1.25rem;
+  }
+
+  .spectrum-card {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1.1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spectrum-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--text-muted);
+    opacity: 0.65;
+  }
+
+  .spectrum-card.middle {
+    border-color: rgba(0, 212, 161, 0.28);
+    background: linear-gradient(180deg, rgba(0, 212, 161, 0.09), var(--surface));
+  }
+
+  .spectrum-card.middle::before {
+    background: var(--jade);
+    opacity: 1;
+  }
+
+  .spectrum-label {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.65rem;
+  }
+
+  .spectrum-card.middle .spectrum-label { color: var(--jade); }
+
+  .spectrum-card h3 {
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.2;
+    margin: 0 0 0.45rem;
+  }
+
+  .spectrum-card p {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .motivation-note {
+    border-left: 3px solid var(--amber);
+    padding: 0.8rem 1.2rem;
+    background: var(--amber-dim);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .motivation-note p {
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    margin-bottom: 0;
+  }
+
+  .lens-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .lens {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1rem;
+  }
+
+  .lens-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 0.45rem;
+  }
+
+  .lens p {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin-bottom: 0;
+  }
+
+  .principles {
+    counter-reset: principle;
+    display: grid;
+    gap: 0.9rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .principle {
+    counter-increment: principle;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1.1rem 1.25rem 1.15rem;
+    display: grid;
+    grid-template-columns: 3.1rem minmax(0, 1fr);
+    gap: 1rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .principle:hover {
+    border-color: var(--surface-border-hover);
+    background: var(--surface-hover);
+  }
+
+  .principle::before {
+    content: counter(principle, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--jade);
+    letter-spacing: 0.08em;
+    padding-top: 0.1rem;
+  }
+
+  .principle h3 {
+    color: var(--text);
+    font-size: 1.04rem;
+    margin: 0 0 0.25rem;
+  }
+
+  .principle p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin-bottom: 0;
+  }
+
+  .principle-details {
+    display: grid;
+    gap: 1.25rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .principle-detail {
+    border-top: 1px solid var(--surface-border);
+    padding-top: 1.25rem;
+  }
+
+  .principle-detail h3 {
+    color: var(--text);
+    font-size: 1.16rem;
+    margin-top: 0;
+  }
+
+  .principle-detail p {
+    color: var(--text-secondary);
+    font-size: 0.97rem;
+    line-height: 1.65;
+  }
+
+  .principle-detail p:last-child { margin-bottom: 0; }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .diagram-layer {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1rem 1.2rem;
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: baseline;
+  }
+
+  .diagram-layer h3 {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: var(--jade);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .diagram-layer p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .process {
+    list-style: none;
+    counter-reset: process;
+    padding: 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .process li {
+    counter-increment: process;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(240, 237, 232, 0.05);
+    padding: 0.75rem 0 0.8rem 2.6rem;
+    position: relative;
+  }
+
+  .process li::before {
+    content: counter(process);
+    position: absolute;
+    left: 0;
+    top: 0.82rem;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: var(--jade);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .process strong { color: var(--text); }
+
+  .entropy {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .entropy-panel {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1.2rem 1.35rem;
+  }
+
+  .entropy-panel.general { border-top: 3px solid var(--text-muted); }
+  .entropy-panel.specialized { border-top: 3px solid var(--jade); }
+
+  .entropy-panel h3 {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 0.75rem;
+  }
+
+  .entropy-panel.specialized h3 { color: var(--jade); }
+
+  .entropy-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .entropy-panel li {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin-bottom: 0.55rem;
+  }
+
+  .entropy-panel li:last-child { margin-bottom: 0; }
+
+  .cta {
+    margin-top: 3rem;
+    padding: 2rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .cta h2 {
+    margin-top: 0;
+    margin-bottom: 0.55rem;
+  }
+
+  .cta p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .cta-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+
+  .button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-hover);
+  }
+
+  .button-link.primary {
+    background: var(--jade);
+    color: var(--bg);
+    border-color: var(--jade);
+    font-weight: 500;
+  }
+
+  .button-link:hover {
+    color: var(--text);
+    border-color: var(--surface-border-hover);
+  }
+
+  .button-link.primary:hover { color: var(--bg); }
+
+  @media (max-width: 920px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .hero-card { max-width: 36rem; }
+
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .toc {
+      position: static;
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 1.25rem;
+    }
+
+    .toc ol {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 1rem;
+    }
+
+    .toc li { margin-bottom: 0; }
+  }
+
+  @media (max-width: 680px) {
+    html {
+      font-size: 16px;
+      scroll-padding-top: 14rem;
+    }
+
+    .content section[id] { scroll-margin-top: 14rem; }
+
+    .site-nav-inner {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .site-nav-links {
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .page { padding: 2.4rem 1rem 4rem; }
+
+    h1 { font-size: 2.2rem; }
+
+    .spectrum,
+    .lens-grid,
+    .entropy {
+      grid-template-columns: 1fr;
+    }
+
+    .principle {
+      grid-template-columns: 1fr;
+      gap: 0.35rem;
+    }
+
+    .diagram-layer {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+    }
+
+    .cta { padding: 1.5rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="/">&larr; Enchiridion Labs</a>
+    <ul class="site-nav-links">
+      <li><a href="#need">Need</a></li>
+      <li><a href="#principles">Principles</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#process">Process</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Field Guide</div>
+      <h1>Specialized Harness Engineering</h1>
+      <p class="subtitle">Principles for turning open-ended LLM capability into constrained, measurable, domain-specific work.</p>
+      <p class="byline">By <a href="https://vivekhaldar.com">Vivek Haldar</a> / <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; May 2026</p>
+    </div>
+    <aside class="hero-card" aria-label="Core claim">
+      <div class="hero-card-label">Core Claim</div>
+      <p>The model supplies local judgment. The harness supplies structure.</p>
+      <p>A specialized harness wins by changing the task the model sees.</p>
+    </aside>
+  </header>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-title">On This Page</div>
+      <ol>
+        <li><a href="#need">The Need For Specialized Harnesses</a></li>
+        <li><a href="#controls">What The Harness Controls</a></li>
+        <li><a href="#principles">The Principles</a></li>
+        <li><a href="#principles-expanded">Detailed Explanations</a></li>
+        <li><a href="#architecture">Architecture Template</a></li>
+        <li><a href="#process">Design Process</a></li>
+      </ol>
+    </aside>
+
+    <article class="content">
+      <section id="need">
+        <h2>The Need For Specialized Harnesses</h2>
+        <div class="summary-box">
+          <p><strong>Harness engineering</strong> is the design of the runtime around the model: what it sees, what it can do, when it can act, how outputs are interpreted, how errors are handled, and how humans supervise the work.</p>
+          <p><strong>Specialized harness engineering</strong> narrows that idea to a task family. It encodes the stable structure of the work into the runtime, then reserves the model for the fuzzy parts where language and judgment actually matter.</p>
+        </div>
+        <p>There is a spectrum of automation. On one end are completely deterministic workflows: ordinary code, business rules, workflow engines, and classic Robotic Process Automation. These work well when every branch is known in advance, the inputs are structured, and the right action can be specified precisely.</p>
+        <p>On the other end are fully dynamic, general-purpose harnesses: Claude Code, OpenAI Codex, and similar agents that can take almost any task, gather context, use tools, and try to solve it with a powerful frontier model. These are valuable when the work is exploratory, ambiguous, or genuinely open-ended.</p>
+
+        <div class="spectrum" aria-label="Automation spectrum">
+          <div class="spectrum-card">
+            <div class="spectrum-label">Left Edge</div>
+            <h3>Deterministic Workflows</h3>
+            <p>Code, rules engines, workflow software, and RPA. Reliable and cheap when the process can be fully specified.</p>
+          </div>
+          <div class="spectrum-card middle">
+            <div class="spectrum-label">Broad Middle</div>
+            <h3>Specialized Harnesses</h3>
+            <p>A known business process with local reasoning, natural language understanding, tool calls, and controlled branching.</p>
+          </div>
+          <div class="spectrum-card">
+            <div class="spectrum-label">Right Edge</div>
+            <h3>General-Purpose Harnesses</h3>
+            <p>Open-ended agents with broad context, broad tools, and strong models. Powerful, but expensive and less constrained.</p>
+          </div>
+        </div>
+
+        <p>In practice, most business use cases live in the broad middle. There is usually a high-level process to follow, a rough flowchart, a set of allowed actions, and a desired final state. But inside that process, the system still needs judgment: reading messy natural language, matching records, deciding which tool to call, handling exceptions, asking for clarification, or choosing the next branch.</p>
+        <div class="motivation-note">
+          <p>Specialized harnesses shine in this middle zone. They give the model enough freedom to handle ambiguity, but enough structure to make the work cheaper, more reliable, easier to audit, and easier to improve.</p>
+        </div>
+        <p>The economics improve because the harness narrows context, scopes tools, reduces unnecessary tokens, and often lets cheaper models complete the job. Performance improves because the runtime carries the process, state, policy, verification, and failure handling instead of asking the model to invent all of that from scratch.</p>
+        <p>This is the lesson behind <a href="sop-execution-engine-design.html">Proceda's SOP execution architecture</a>: the win does not come from asking a model to be generally smarter. It comes from reshaping the job into smaller, typed, observable steps.</p>
+        <div class="entropy">
+          <div class="entropy-panel general">
+            <h3>General Harness</h3>
+            <ul>
+              <li>Task interpretation is open.</li>
+              <li>Plans are improvised.</li>
+              <li>Tool choice is broad.</li>
+              <li>Context is accumulated.</li>
+              <li>Stopping conditions are loose.</li>
+              <li>Outputs are often prose-first.</li>
+            </ul>
+          </div>
+          <div class="entropy-panel specialized">
+            <h3>Specialized Harness</h3>
+            <ul>
+              <li>The task is typed.</li>
+              <li>State is explicit.</li>
+              <li>Tools are scoped.</li>
+              <li>Context is routed.</li>
+              <li>Transitions are controlled.</li>
+              <li>Outputs are structured.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="controls">
+        <h2>What The Harness Controls</h2>
+        <p>A specialized harness is not just a prompt with tools attached. It is the execution environment that turns a language model into a reliable worker for one narrow task family.</p>
+        <div class="lens-grid">
+          <div class="lens">
+            <div class="lens-label">State</div>
+            <p>Current step, completed work, extracted fields, approvals, errors, retries, and final outputs.</p>
+          </div>
+          <div class="lens">
+            <div class="lens-label">Context</div>
+            <p>The exact instructions, facts, tool results, memories, examples, and policies relevant now.</p>
+          </div>
+          <div class="lens">
+            <div class="lens-label">Tools</div>
+            <p>The scoped action space, typed inputs, normalized outputs, permissions, and side effects.</p>
+          </div>
+          <div class="lens">
+            <div class="lens-label">Policy</div>
+            <p>Approval gates, access boundaries, spend limits, audit rules, and write constraints.</p>
+          </div>
+          <div class="lens">
+            <div class="lens-label">Verification</div>
+            <p>Schemas, deterministic checks, tests, citations, reconciliation, and critic passes.</p>
+          </div>
+          <div class="lens">
+            <div class="lens-label">UX</div>
+            <p>The human surfaces for authoring, review, approval, correction, explanation, and audit.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="principles">
+        <h2>The Principles</h2>
+        <p>The principles below are a practical checklist for designing a harness around a narrow but valuable category of work.</p>
+
+        <div class="principles">
+          <section class="principle">
+            <div>
+              <h3>Separate structure from judgment</h3>
+              <p>Move stable parts of the job into the runtime: steps, rules, schemas, required fields, tool dependencies, approvals, and output formats. Use the model for interpretation, ambiguity, mapping, summarization, and exceptions.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Reduce cognitive load on the model</h3>
+              <p>Each model call should have a local objective, relevant facts, and the smallest useful tool surface. The harness should make the next act obvious.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Make state the source of truth</h3>
+              <p>The transcript is not the system of record. Keep typed task state: lifecycle, fields, unresolved questions, evidence, approvals, validation status, and final artifacts.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Use synthetic tools for control</h3>
+              <p>The harness can create tools that are not underlying APIs: <code>complete</code>, <code>clarify</code>, <code>escalate</code>, <code>approve</code>, <code>retry</code>, or <code>report_blocked</code>. These tools make control flow explicit.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>First-class output contracts</h3>
+              <p>Prefer structured outputs for both intermediate and final steps: JSON, XML tags, typed events, patches, records, forms, or document templates. Free-form prose should not be the control surface.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Enforce policy and verification in the harness</h3>
+              <p>Approval thresholds, permissions, business rules, schema checks, tests, citation requirements, and source-data reconciliation should live outside the model wherever possible.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Make failure a first-class state</h3>
+              <p>Blocked, invalid, needs clarification, failed validation, needs approval, partial, escalated, canceled, and retrying are product states. The harness should degrade into known states, not open-ended loops.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Context management should be done in a domain-specific way</h3>
+              <p>The task should decide what gets preserved, compacted, retrieved, or biased toward recency. This is not generic message trimming.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Instrument everything</h3>
+              <p>Trace prompts, tools, calls, arguments, responses, state changes, validations, costs, failures, and final outputs. Failed traces are the raw material for improving the harness.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Use the cheapest sufficient model</h3>
+              <p>Once the task is decomposed, route local operations to smaller models where possible. A well-designed harness can improve correctness while lowering model cost.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Design the human role deliberately</h3>
+              <p>Humans may author procedures, approve sensitive actions, resolve exceptions, teach the system, audit decisions, or receive the final result. Show task state, evidence, proposed action, confidence, and blocked reasons.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Encode a domain language</h3>
+              <p>The best harnesses develop small domain languages: steps, approvals, clauses, risks, citations, tickets, patches, migrations, accounts, evidence, or disposition codes. The runtime compiles that language into model calls, tool calls, checks, and outputs.</p>
+            </div>
+          </section>
+
+          <section class="principle">
+            <div>
+              <h3>Evaluate the task, not the model</h3>
+              <p>Measure completion rate, correctness, path accuracy, extraction accuracy, false escalations, cost per completed case, latency, human touches, audit pass rate, and regression rate after changes.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="principles-expanded">
+        <h2>Detailed Explanations</h2>
+
+        <div class="principle-details">
+          <section class="principle-detail">
+            <h3>Separate structure from judgment</h3>
+            <p>The first move is to decompose the work into what is structurally known and what actually requires intelligence. The known parts are steps, required fields, allowed branches, approval rules, tool dependencies, output schemas, and side-effect boundaries. Those should move into the harness.</p>
+            <p>The model should handle the irreducibly fuzzy parts: interpreting messy input, matching ambiguous records, choosing among plausible categories, summarizing evidence, or deciding whether an exception applies. The model should not be the operating system for the workflow. The harness should be.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Reduce cognitive load on the model</h3>
+            <p>The crude approach is to give the model the whole task, all the context, all the tools, and all the rules. The harness-engineered approach is to give it the local objective, the relevant facts, and the narrow action surface for the current point in the workflow.</p>
+            <p>This is not only a token-saving trick. It changes the difficulty of the model's job. Smaller local calls reduce planning errors, tool-selection errors, context distraction, and unnecessary deliberation. A specialized harness behaves like a manager placing the right file, instruction, and tool in front of the worker at the right moment.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Make state the source of truth</h3>
+            <p>Many agent systems are secretly chat logs with tool calls attached. That can work for general exploration, but specialized work needs explicit state: current step, completed steps, extracted fields, unresolved questions, validation status, approvals, errors, retries, final outputs, and audit records.</p>
+            <p>The conversation with the model is only one way of updating that state. A contract-review harness should track documents reviewed, clauses extracted, risks identified, source citations, reviewer comments, and final recommendations. A support harness should track customer identity, issue category, account status, attempted remedies, escalation reason, and final disposition.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Use synthetic tools for control</h3>
+            <p>A harness is not limited to the external tools it connects to. It can create synthetic tools that exist only to shape the interaction between the model and the runtime. These are not domain APIs like search CRM or update ticket. They are control tools like <code>complete_step</code>, <code>request_clarification</code>, <code>escalate_to_human</code>, <code>propose_retry</code>, <code>defer_action</code>, <code>report_blocked</code>, or <code>submit_structured_fields</code>.</p>
+            <p>This turns prose into protocol. The runtime no longer has to guess whether the model is done, blocked, confused, asking permission, or ready to advance. The model uses a synthetic tool, the harness updates state, and the next step follows from a typed transition.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>First-class output contracts</h3>
+            <p>Specialized harnesses should prefer structured outputs wherever the runtime needs to act on the result. This applies to intermediate steps as much as final answers. If a step extracts fields, classifies a case, selects an account, records evidence, or proposes an action, the output should be JSON, XML tags, a typed event, a patch, a database row, or another explicit contract.</p>
+            <p>Natural language is still useful for explanation and human review. It should not be the control surface. Downstream systems need determinism, and the harness should not rely on fragile parsing of free-form prose to know what happened.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Enforce policy and verification in the harness</h3>
+            <p>The model can interpret policy, but it should not be the only thing enforcing policy. Approval thresholds, access control, spend limits, production writes, PII handling, rate limits, retry rules, and audit requirements should be represented in the harness.</p>
+            <p>The same is true for verification. Use schema validation, deterministic business rules, tests, API precondition checks, citation coverage, duplicate detection, source-data reconciliation, or independent critic passes. Prompting says "be careful." Harness engineering says "here is the checker that catches mistakes."</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Make failure a first-class state</h3>
+            <p>A production harness has to represent more than the happy path. Missing information, ambiguous evidence, unavailable tools, permissions errors, low-confidence classifications, validation failures, contradictory inputs, and nonresponsive humans are all normal workflow states.</p>
+            <p>The harness should degrade into known, named conditions rather than open-ended loops: blocked, needs clarification, failed validation, needs approval, partially complete, escalated, or retrying. Naming these conditions is what makes the system operable.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Context management should be done in a domain-specific way</h3>
+            <p>Context management is often treated as generic compaction: summarize older messages, keep recent messages, and hope the important details survive. In a specialized harness, context management should be guided by the task itself.</p>
+            <p>Some domains should preserve specific fields, citations, approvals, or tool outputs no matter how old they are. Others may bias toward recency because the latest state supersedes earlier evidence. Some information should be retrieved from source systems when needed; some should live in structured state rather than conversational memory. A large context window is not a substitute for domain-specific relevance.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Instrument everything</h3>
+            <p>Traces should be a product primitive, not an afterthought. A run should show what step was active, what prompt was sent, what tools were exposed, what tool was called, what arguments were used, what output came back, what state changed, what validation passed, what validation failed, what the model cost, where a human intervened, and what final artifact was produced.</p>
+            <p>These traces are how the harness improves over time. Failed traces show exactly where the runtime, prompt, state model, tool surface, or verifier needs to change. That learning loop can even be automated: <a href="https://github.com/karpathy/autoresearch">Karpathy's autoresearch</a> is a useful reference point for the pattern of letting agents run experiments, evaluate outcomes, keep improvements, discard failures, and accumulate progress from the trace.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Use the cheapest sufficient model</h3>
+            <p>The economic promise of a specialized harness is that structure can substitute for raw model capability. Once the task is decomposed, many local operations can be handled by smaller, cheaper, faster models because the harness has already reduced the degrees of freedom.</p>
+            <p>That does not have to sacrifice task performance. <a href="sop-bench-results.html">Proceda's SOP-Bench results</a> show the stronger claim: with the right specialized harness, cheaper models can match or beat stronger frontier-model baselines on bounded procedural work. The harness can improve correctness while lowering cost.</p>
+            <p>This implies model routing. Extraction from a known template may use a cheap model. Clear classification may use a cheap model. Ambiguous exception handling may use a stronger model. Verification may be deterministic code. The goal is not to worship small models; it is to spend frontier-model intelligence only where it actually creates leverage.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Design the human role deliberately</h3>
+            <p>Humans are not merely emergency fallbacks. They can be authors, approvers, reviewers, exception resolvers, teachers, auditors, or customers. A good harness knows which role is needed at which point in the workflow.</p>
+            <p>The interface should expose task state rather than raw transcript: current step, evidence, proposed action, confidence, blocked reason, validation result, and approval options. This is how agentic work becomes legible and trustworthy.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Encode a domain language</h3>
+            <p>The best specialized harnesses develop a small language for the domain. In an SOP harness, that language might include steps, approval markers, tool names, output fields, completion signals, and blocked states. In a contract harness, it might include clauses, obligations, counterparties, risks, citations, and reviewer dispositions.</p>
+            <p>This is where harness engineering starts to look like compiler design. The input may be natural language, markdown, examples, templates, or business rules. The harness compiles that into model calls, tool calls, checks, state transitions, and artifacts.</p>
+          </section>
+
+          <section class="principle-detail">
+            <h3>Evaluate the task, not the model</h3>
+            <p>Generic model benchmarks do not tell you whether your invoice harness, support harness, diligence harness, migration harness, or SOP harness works. You need task-level measurements: completion rate, correctness, tool-call accuracy, path correctness, extraction accuracy, false escalation rate, cost per completed case, latency, human touches, audit-pass rate, and regression rate.</p>
+            <p>The unit of evaluation is the whole task family. The question is not whether the model sounded plausible. The question is whether the harness completed the work correctly, cheaply, safely, and with an acceptable amount of human intervention.</p>
+          </section>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture Template</h2>
+        <p>For a new specialized task, the harness usually falls into these layers. The model is important, but it is not the whole product.</p>
+        <div class="diagram">
+          <div class="diagram-layer">
+            <h3>Human UX</h3>
+            <p>Authoring, review, approval, correction, explanation, audit, and customer-facing surfaces.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Observability &amp; Evals</h3>
+            <p>Traces, metrics, replay, failure clustering, model comparisons, regression suites, and audit trails.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Policy &amp; Verification</h3>
+            <p>Validators, permissions, approval gates, circuit breakers, tests, schema checks, and business rules.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Model Interaction</h3>
+            <p>Prompts, retrieval, model routing, structured outputs, local instructions, and control tools.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Controller</h3>
+            <p>State machine, DAG, workflow engine, step executor, planner, or queue processor.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Domain State</h3>
+            <p>Typed objects representing cases, claims, invoices, SOP runs, documents, tickets, repos, approvals, and outputs.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Tools &amp; Integrations</h3>
+            <p>APIs, databases, browsers, SaaS systems, files, sandboxes, search, email, calendars, CRMs, and internal services.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="process">
+        <h2>Design Process</h2>
+        <p>Start from concrete work, not architecture diagrams. The structure of the harness should be discovered from real examples.</p>
+        <ol class="process">
+          <li><strong>Collect real cases.</strong> Capture inputs, actions, tools, decisions, outputs, mistakes, and human checks.</li>
+          <li><strong>Find the stable skeleton.</strong> Identify what always happens, what usually happens, branches, final states, deterministic rules, and judgment-heavy moments.</li>
+          <li><strong>Define canonical state.</strong> Create typed lifecycle states and fields. Keep the transcript secondary.</li>
+          <li><strong>Locate the model slots.</strong> Decide where language understanding, fuzzy matching, exception handling, or generation is actually needed.</li>
+          <li><strong>Constrain the action space.</strong> Set tool availability, permissions, preconditions, reversibility, idempotency, and approval requirements.</li>
+          <li><strong>Specify output contracts.</strong> Define required fields, citations, explanations, patches, records, or form submissions.</li>
+          <li><strong>Enumerate failure states.</strong> Design blocked, invalid, low-confidence, missing-info, tool-failed, and validation-failed paths deliberately.</li>
+          <li><strong>Instrument from the beginning.</strong> Make every run replayable and every failure inspectable.</li>
+          <li><strong>Optimize the model portfolio.</strong> Try smaller, cheaper, faster models once the runtime has reduced the task.</li>
+        </ol>
+      </section>
+
+      <div class="cta">
+        <h2>From Prompt To Runtime</h2>
+        <p>Proceda is one example of this philosophy applied to standard operating procedures: bounded state, scoped tools, approval gates, structured extraction, and observable execution.</p>
+        <div class="cta-links">
+          <a class="button-link primary" href="sop-execution-engine-design.html">Read The Architecture</a>
+          <a class="button-link" href="sop-bench-results.html">See SOP-Bench Results</a>
+          <a class="button-link" href="/">Back To The Lab</a>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+
+<script>
+function alignHashTarget() {
+  if (!window.location.hash) return;
+  const target = document.querySelector(window.location.hash);
+  if (!target) return;
+  const nav = document.querySelector('.site-nav');
+  const offset = (nav ? nav.getBoundingClientRect().height : 0) + 24;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'auto' });
+}
+
+window.addEventListener('load', () => {
+  alignHashTarget();
+  if (document.fonts) {
+    document.fonts.ready.then(alignHashTarget);
+  }
+});
+</script>
+
+</body>
+</html>

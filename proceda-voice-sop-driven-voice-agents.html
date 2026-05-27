@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proceda Voice: SOP-Driven Voice Agents &mdash; Enchiridion Labs</title>
+<meta name="description" content="A technical article on Proceda Voice: using natural-language SOPs, deterministic state, bounded slot windows, and audit-first execution to build reliable voice agents.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-warm: #0d0e13;
+    --surface: #131419;
+    --surface-hover: #1a1b22;
+    --surface-border: rgba(240, 237, 232, 0.06);
+    --surface-border-strong: rgba(240, 237, 232, 0.12);
+    --surface-border-hover: rgba(0, 212, 161, 0.25);
+
+    --text: #f0ede8;
+    --text-secondary: #b0ada6;
+    --text-muted: #6a6875;
+    --text-faint: #5e5d68;
+
+    --jade: #00D4A1;
+    --jade-dim: rgba(0, 212, 161, 0.12);
+    --jade-glow: rgba(0, 212, 161, 0.08);
+    --amber: #E8A94A;
+    --amber-dim: rgba(232, 169, 74, 0.12);
+    --blue: #7C9DFF;
+    --blue-dim: rgba(124, 157, 255, 0.13);
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    font-size: 17px;
+    scroll-behavior: smooth;
+    scroll-padding-top: 10rem;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    line-height: 1.72;
+    font-weight: 300;
+    background:
+      radial-gradient(circle at 16% 4%, rgba(0, 212, 161, 0.08), transparent 18rem),
+      linear-gradient(180deg, rgba(124, 157, 255, 0.045), transparent 21rem),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--jade);
+    color: var(--bg);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.018;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  a {
+    color: var(--jade);
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  a:hover { color: var(--text); }
+
+  .site-nav {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    background: rgba(10, 11, 15, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .site-nav-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
+  .site-nav a {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .site-nav a:hover { color: var(--jade); }
+
+  .site-nav-links {
+    display: flex;
+    gap: 1.2rem;
+    list-style: none;
+    min-width: 0;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    min-width: 0;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--surface-border);
+    min-width: 0;
+  }
+
+  .hero > * { min-width: 0; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 3.35rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.03;
+    color: var(--text);
+    margin-bottom: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .title-line { display: inline; }
+
+  .title-line + .title-line::before { content: ' '; }
+
+  .subtitle {
+    font-size: 1.18rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    max-width: 720px;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .byline {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  .byline a {
+    color: var(--jade);
+    font-weight: 500;
+  }
+
+  .hero-card {
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    background: linear-gradient(180deg, var(--jade-dim), rgba(19, 20, 25, 0.72));
+    padding: 1.25rem;
+    min-width: 0;
+  }
+
+  .hero-card-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.8rem;
+  }
+
+  .hero-card p {
+    font-size: 0.94rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 0.75rem;
+    overflow-wrap: anywhere;
+  }
+
+  .hero-card p:last-child { margin-bottom: 0; }
+
+  .video-stage {
+    margin: 3rem 0 0;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--surface-border-strong);
+    background: var(--surface);
+    box-shadow: 0 2rem 5rem rgba(0, 0, 0, 0.28);
+  }
+
+  .video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .video-caption {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.8rem;
+    overflow-wrap: anywhere;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 780px);
+    gap: 4rem;
+    align-items: start;
+    margin-top: 3rem;
+    min-width: 0;
+  }
+
+  .toc {
+    position: sticky;
+    top: 5rem;
+    padding-top: 0.25rem;
+  }
+
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc li { margin-bottom: 0.45rem; }
+
+  .toc a {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+
+  .toc a:hover { color: var(--jade); }
+
+  .content section[id] { scroll-margin-top: 10rem; }
+
+  .content { min-width: 0; }
+
+  .content p {
+    margin-bottom: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .content strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .content em { color: var(--text-secondary); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    color: var(--jade);
+    border: 1px solid var(--surface-border);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.2;
+    color: var(--text);
+    margin-top: 3.25rem;
+    margin-bottom: 1rem;
+  }
+
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .summary-box {
+    background: var(--jade-dim);
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    padding: 1.35rem 1.5rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .summary-box p {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+
+  .summary-box p:last-child { margin-bottom: 0; }
+
+  .constraint-grid,
+  .trace-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .constraint-card,
+  .trace-card {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1.1rem;
+  }
+
+  .constraint-label,
+  .trace-label,
+  .flow-label {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.65rem;
+  }
+
+  .constraint-card h3,
+  .trace-card h3 {
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.2;
+    margin: 0 0 0.45rem;
+  }
+
+  .constraint-card p,
+  .trace-card p {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .window-diagram {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.5rem 0 2rem;
+    padding: 1.15rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: rgba(19, 20, 25, 0.7);
+  }
+
+  .slot-row {
+    display: grid;
+    grid-template-columns: 6.8rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .slot-row-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .slot-track {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .slot {
+    min-height: 3.25rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    padding: 0.55rem;
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .slot.current {
+    border-color: rgba(0, 212, 161, 0.36);
+    background: var(--jade-dim);
+    color: var(--text);
+  }
+
+  .slot.future {
+    border-color: rgba(232, 169, 74, 0.28);
+    background: var(--amber-dim);
+    color: var(--text-secondary);
+  }
+
+  .slot.closed {
+    opacity: 0.38;
+  }
+
+  .architecture {
+    display: grid;
+    gap: 0.85rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .architecture-layer {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: baseline;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1rem 1.2rem;
+  }
+
+  .architecture-layer.highlight {
+    border-color: rgba(0, 212, 161, 0.24);
+    background: linear-gradient(90deg, var(--jade-dim), var(--surface));
+  }
+
+  .architecture-layer h3 {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: var(--jade);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .architecture-layer p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .turn-loop {
+    list-style: none;
+    counter-reset: turn;
+    padding: 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .turn-loop li {
+    counter-increment: turn;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(240, 237, 232, 0.05);
+    padding: 0.78rem 0 0.82rem 2.8rem;
+    position: relative;
+  }
+
+  .turn-loop li::before {
+    content: counter(turn);
+    position: absolute;
+    left: 0;
+    top: 0.86rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--jade);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .callout {
+    border-left: 3px solid var(--amber);
+    padding: 0.8rem 1.2rem;
+    background: var(--amber-dim);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .callout p {
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    margin-bottom: 0;
+  }
+
+  .flow-note {
+    border: 1px solid rgba(124, 157, 255, 0.22);
+    border-radius: 8px;
+    background: var(--blue-dim);
+    padding: 1.2rem 1.35rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .flow-note p {
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.58;
+    margin-bottom: 0.75rem;
+  }
+
+  .flow-note p:last-child { margin-bottom: 0; }
+
+  .source-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 2rem;
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .source-list li {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 0.9rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  @media (max-width: 920px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .hero-card { max-width: 36rem; }
+
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .toc {
+      position: static;
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 1.25rem;
+    }
+
+    .toc ol {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 1rem;
+    }
+
+    .toc li { margin-bottom: 0; }
+  }
+
+  @media (max-width: 680px) {
+    html {
+      font-size: 16px;
+      scroll-padding-top: 14rem;
+    }
+
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .content section[id] { scroll-margin-top: 14rem; }
+
+    .site-nav-inner {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0 1rem;
+    }
+
+    .site-nav-links {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .site-nav a {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+
+    .site-nav,
+    .page {
+      width: 100%;
+      max-width: 100vw;
+      overflow: hidden;
+    }
+
+    .page { padding: 2.4rem 1rem 4rem; }
+
+    .hero,
+    .hero > div,
+    .hero-card,
+    .video-stage,
+    .video-frame,
+    .layout,
+    .toc,
+    .content,
+    .summary-box,
+    .constraint-card,
+    .trace-card,
+    .flow-note,
+    .callout {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    h1,
+    .subtitle,
+    .byline,
+    .hero-card,
+    .video-frame,
+    .video-caption,
+    .toc,
+    .content {
+      max-width: calc(100vw - 2rem);
+    }
+
+    h1 {
+      font-size: 1.95rem;
+      line-height: 1.08;
+    }
+
+    .title-line { display: block; }
+
+    .title-line + .title-line::before { content: ''; }
+
+    .constraint-grid,
+    .trace-grid,
+    .slot-track {
+      grid-template-columns: 1fr;
+    }
+
+    .slot-row,
+    .architecture-layer {
+      grid-template-columns: 1fr;
+      gap: 0.45rem;
+    }
+
+    .video-stage { margin-top: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="/">&larr; Enchiridion Labs</a>
+    <ul class="site-nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#existing-solutions">Landscape</a></li>
+      <li><a href="#window">Window</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Technical Article</div>
+      <h1><span class="title-line">Proceda Voice:</span><span class="title-line">SOP-Driven</span><span class="title-line">Voice Agents</span></h1>
+      <p class="subtitle">Voice agents are not just speech wrapped around a chatbot. They are low-latency procedural systems that have to keep state, enforce policy, and survive messy human conversation.</p>
+      <p class="byline">By <a href="https://vivekhaldar.com">Vivek Haldar</a> / <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; May 2026</p>
+    </div>
+    <aside class="hero-card" aria-label="Core claim">
+      <div class="hero-card-label">Core Claim</div>
+      <p>Keep the SOP as the source of truth. Move position tracking into deterministic code. Give the model only the bounded slice of the procedure it can act on now.</p>
+      <p>That is the difference between a voice prompt and a procedural voice runtime.</p>
+    </aside>
+  </header>
+
+  <section class="video-stage" id="video" aria-label="Embedded source video">
+    <div class="video-frame">
+      <iframe
+        src="https://www.youtube-nocookie.com/embed/XJajLhfmVG8?rel=0"
+        title="Proceda Voice: SOP-Driven Voice Agents"
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen></iframe>
+    </div>
+    <p class="video-caption">Source video: <a href="https://www.youtube.com/watch?v=XJajLhfmVG8">Proceda Voice: SOP-Driven Voice Agents</a>, 17:49, published May 25, 2026.</p>
+  </section>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-title">On This Page</div>
+      <ol>
+        <li><a href="#problem">The Voice-Agent Constraint</a></li>
+        <li><a href="#proceda">From SOPs To Calls</a></li>
+        <li><a href="#existing-solutions">Existing Solutions</a></li>
+        <li><a href="#window">The Windowed Slot Frontier</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#turn-loop">Per-Turn Loop</a></li>
+        <li><a href="#traces">Demo Trace Patterns</a></li>
+        <li><a href="#related-reading">Related Reading</a></li>
+      </ol>
+    </aside>
+
+    <article class="content">
+      <section id="problem">
+        <h2>The Voice-Agent Constraint</h2>
+        <div class="summary-box">
+          <p><strong>Voice agents are hard because the system has to optimize for two things that pull against each other:</strong> low-latency conversation and high-quality procedural reasoning.</p>
+          <p>A caller is on the line. The agent cannot spend seconds thinking. But it also cannot drift, skip gates, hallucinate policy, or forget why the call exists.</p>
+        </div>
+        <p>Text agents can often hide behind latency and backtracking. If a tool call takes a few seconds, the user can wait. If the model needs to inspect a long document, it can do that before answering. Voice is less forgiving. Dead air feels broken, interruptions are normal, and the human on the other end is often distracted, emotional, adversarial, or simply trying to get through a customer-service task quickly.</p>
+        <p>That makes the core challenge architectural. The system needs strong reasoning and tool use, but it needs them inside a loop fast enough for speech. It has to preserve intent across a complex call without handing the entire call transcript, every policy, every tool, and every branch to the model on every turn.</p>
+
+        <div class="constraint-grid" aria-label="Voice agent constraints">
+          <div class="constraint-card">
+            <div class="constraint-label">Latency</div>
+            <h3>Keep the call moving</h3>
+            <p>The agent needs a quick next utterance, even while state, tools, and validation are evolving underneath.</p>
+          </div>
+          <div class="constraint-card">
+            <div class="constraint-label">Procedure</div>
+            <h3>Hold the intent</h3>
+            <p>The caller may jump ahead, correct themselves, or ask side questions. The workflow still has to converge.</p>
+          </div>
+          <div class="constraint-card">
+            <div class="constraint-label">Policy</div>
+            <h3>Refuse unsafe shortcuts</h3>
+            <p>Authentication, confirmations, compliance language, and required side effects cannot be optional.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="proceda">
+        <h2>From SOPs To Calls</h2>
+        <p>Proceda started as a text-in, text-out system for turning natural-language SOPs into executable agents. The author writes a procedure in a `SKILL.md`-style document: steps, fields, tools, gates, confirmations, and policy. The runtime handles the execution mechanics around that procedure.</p>
+        <p>The central insight is that the model should not be asked to understand the entire workflow at once. If the runtime narrows each model call to the current local job, the model has less to remember, fewer tools to choose among, and fewer ways to drift. That narrowing is part of why Proceda can make smaller models perform well on bounded procedural work.</p>
+        <p>Proceda Voice asks whether the same thesis can survive a phone call. The answer is yes, but with a change in the unit of narrowing. Text SOP execution can often advance step by step. Voice cannot assume that clean sequence, because callers do not speak in step order.</p>
+        <div class="flow-note">
+          <div class="flow-label">Positioning</div>
+          <p>Proceda Voice is <strong>SOP-native, not canvas-native</strong>. The human-authored artifact is still the procedure document, not a hand-drawn graph of every possible conversational branch.</p>
+          <p>The runtime can derive state, eligible facts, gates, prompts, tool eligibility, and audit evidence from that document.</p>
+        </div>
+      </section>
+
+      <section id="existing-solutions">
+        <h2>Existing Solutions</h2>
+        <p>The broader voice-agent market appears to be converging on the same lesson: large monolithic prompts are too brittle for complex, multi-turn calls. The common response is to add structure around the conversation so the model has a smaller local job.</p>
+        <div class="constraint-grid" aria-label="Existing voice-agent architecture patterns">
+          <div class="constraint-card">
+            <div class="constraint-label">Decagon</div>
+            <h3><a href="https://decagon.ai/modules/aops">AOPs</a></h3>
+            <p>Agent Operating Procedures combine natural-language workflow instructions with code, tools, metadata, and nodes that keep complex CX conversations on track.</p>
+          </div>
+          <div class="constraint-card">
+            <div class="constraint-label">Vapi</div>
+            <h3><a href="https://docs.vapi.ai/squads">Squads</a></h3>
+            <p>Squads split a complex voice workflow across specialized assistants, each with its own role, tool surface, and handoff conditions.</p>
+          </div>
+          <div class="constraint-card">
+            <div class="constraint-label">Pipecat</div>
+            <h3><a href="https://docs.pipecat.ai/pipecat-flows/introduction">Flows</a></h3>
+            <p>Pipecat Flows model structured conversations as a graph of nodes, focusing the model on one local task and the tools needed at that point.</p>
+          </div>
+        </div>
+        <p>These systems are similar to Proceda Voice in the most important way: they all reject the idea that one giant prompt should carry an entire production call. They add decomposition, state, tool scoping, and local instructions so the end-to-end conversation stays on rails.</p>
+        <p>The difference is the primary control surface. Flow builders ask the author to model a graph. Squad-style systems ask the author to split the call across assistants and handoffs. Proceda Voice asks the author to bring a natural-language SOP. The runtime then derives the active state, hard gates, eligible facts, tool permissions, and audit trace from that SOP.</p>
+        <div class="flow-note">
+          <div class="flow-label">Proceda Voice Difference</div>
+          <p>The new piece is not simply "natural language." The new piece is a structured natural-language procedure executed by a deterministic conversation engine.</p>
+          <p>Instead of asking the model to pick the next node or carry the whole procedure, Proceda Voice exposes a bounded slot frontier: the facts the caller is allowed to establish now, plus a small lookahead window for nearby future facts.</p>
+        </div>
+      </section>
+
+      <section id="window">
+        <h2>The Windowed Slot Frontier</h2>
+        <p>The main design move is to stop narrowing to a single current step and instead narrow to a bounded set of candidate slots. A slot is a concrete fact the procedure needs: a policy number, a date, a location, an employee ID, a confirmation code, a maximum price, a preferred return-to-work time.</p>
+        <p>On each caller turn, Proceda Voice computes which slots are eligible now and which nearby future slots are safe to listen for. The model is allowed to extract facts only from that set. It can hear ahead, but only within the part of the SOP the runtime has made available.</p>
+
+        <div class="window-diagram" aria-label="Windowed slot frontier diagram">
+          <div class="slot-row">
+            <div class="slot-row-label">Allowed</div>
+            <div class="slot-track">
+              <div class="slot current">policy_number</div>
+              <div class="slot current">incident_date</div>
+              <div class="slot current">incident_location</div>
+              <div class="slot future">injuries_reported</div>
+              <div class="slot future">vehicle_damage</div>
+            </div>
+          </div>
+          <div class="slot-row">
+            <div class="slot-row-label">Closed</div>
+            <div class="slot-track">
+              <div class="slot closed">claim_payout</div>
+              <div class="slot closed">rental_reimbursement</div>
+              <div class="slot closed">fraud_escalation</div>
+              <div class="slot closed">settlement_offer</div>
+              <div class="slot closed">payment_method</div>
+            </div>
+          </div>
+        </div>
+
+        <p>This is <strong>bounded procedural attention</strong>. The model receives enough freedom to handle natural caller behavior, but not enough freedom to fill arbitrary future facts or decide that policy no longer applies.</p>
+        <p>The window solves the false choice between two weak designs. A rigid form asks for exactly one field at a time and misses useful out-of-order answers. A giant prompt asks the model to track every step, tool, policy, and branch while also holding a live conversation. Proceda Voice sits between them: a small allowed frontier, recomputed deterministically after each turn.</p>
+        <div class="callout">
+          <p>If the caller volunteers a fact outside the current window, the system can safely ignore it and ask later. Missing a far-future fact is usually better than accepting a fact in the wrong procedural context.</p>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture</h2>
+        <p>Proceda Voice is deliberately not a full audio stack. The speech plane can be supplied by systems such as <a href="https://vapi.ai/">Vapi</a>, <a href="https://www.pipecat.ai/">Pipecat</a>, or another realtime voice substrate. Proceda owns the procedural brain: state, extraction, gates, tools, response planning, and audit.</p>
+        <p>That separation matters because it keeps the voice infrastructure swappable. The runtime can improve STT, TTS, endpointing, and interruption handling without moving policy logic into a vendor-specific flow graph.</p>
+
+        <div class="architecture" aria-label="Proceda Voice architecture">
+          <div class="architecture-layer">
+            <h3>Voice Plane</h3>
+            <p>Turn detection, STT, TTS, telephony, WebRTC, interruptions, recordings, and realtime transport.</p>
+          </div>
+          <div class="architecture-layer highlight">
+            <h3>Proceda Turn Engine</h3>
+            <p>Computes the slot window, extracts structured facts, advances state, fires eligible tools, plans the response, and writes the audit trail.</p>
+          </div>
+          <div class="architecture-layer">
+            <h3>SOP Artifact</h3>
+            <p>The natural-language procedure: slots, steps, hard dependencies, prompts, confirmations, tools, policies, and final criteria.</p>
+          </div>
+          <div class="architecture-layer">
+            <h3>Business Systems</h3>
+            <p>CRMs, claims systems, HR systems, airline reservations, calendars, facilities tools, and other side-effecting APIs.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="turn-loop">
+        <h2>The Per-Turn Loop</h2>
+        <p>The important property is that the model does not own the call state. The transcript is evidence. The canonical state is a typed object maintained by the runtime.</p>
+        <ol class="turn-loop">
+          <li><strong>Receive a finalized caller utterance.</strong> The voice plane provides text plus timing and call metadata.</li>
+          <li><strong>Compute the candidate window.</strong> Deterministic code derives the currently eligible slots and the bounded future frontier from SOP state.</li>
+          <li><strong>Extract only allowed facts.</strong> A model maps the utterance into structured slot updates, corrections, or no-op results.</li>
+          <li><strong>Advance state in code.</strong> The runtime validates gates, records provenance, fires eligible tools, and decides what remains unresolved.</li>
+          <li><strong>Plan the next utterance.</strong> The response can be verbatim for compliance, templated for confirmations, or generated for flexible conversational glue.</li>
+          <li><strong>Emit auditable output.</strong> The system logs the state delta, source turn, tool calls, emitted text, and latency for replay and conformance review.</li>
+        </ol>
+        <p>This is a specialized harness for voice. The model still does language work, but the harness supplies the shape of the work: allowed facts, state transitions, policy gates, and stopping conditions.</p>
+      </section>
+
+      <section id="traces">
+        <h2>What The Demo Traces Show</h2>
+        <p>The video ends with three animated call traces. They are useful because they stress the runtime in the ways ordinary demo scripts often avoid: side questions, corrections, missing fields, caller frustration, and attempts to bypass mandatory steps.</p>
+        <div class="trace-grid" aria-label="Demo traces">
+          <div class="trace-card">
+            <div class="trace-label">IT Service Desk</div>
+            <h3>Conference room booking</h3>
+            <p>The caller tries to skip identity verification and later asks to skip a required calendar invite. The agent keeps the workflow moving while enforcing both gates.</p>
+          </div>
+          <div class="trace-card">
+            <div class="trace-label">Medical HR</div>
+            <h3>FMLA leave case</h3>
+            <p>The caller is scattered, asks side questions, and supplies partial identity data. The runtime captures leave category, dates, confirmation, and return-to-work scheduling.</p>
+          </div>
+          <div class="trace-card">
+            <div class="trace-label">Airline Rebooking</div>
+            <h3>Flight change</h3>
+            <p>The caller is in a noisy airport and keeps checking constraints. The agent preserves route, date, arrival deadline, cost cap, seat preference, and final authorization.</p>
+          </div>
+        </div>
+        <p>In each trace, the interesting behavior is not that the agent sounds polite. It is that the runtime knows which facts have been established, which facts remain open, which side effects are allowed, and which policy constraints cannot be waived by caller pressure.</p>
+      </section>
+
+      <section id="related-reading">
+        <h2>Related Reading</h2>
+        <ul class="source-list">
+          <li><a href="sop-execution-engine-design.html">Anatomy of a SOTA Agentic SOP-Execution Engine</a> explains the text-mode execution architecture behind Proceda.</li>
+          <li><a href="sop-bench-results.html">Proceda SOP-Bench results</a> show why narrowing the model's job can improve procedural reliability and cost.</li>
+          <li><a href="specialized-harness-engineering.html">Specialized Harness Engineering</a> generalizes the pattern beyond SOP execution.</li>
+        </ul>
+      </section>
+    </article>
+  </div>
+</main>
+
+<script>
+function alignHashTarget() {
+  if (!window.location.hash) return;
+  const target = document.querySelector(window.location.hash);
+  if (!target) return;
+  const nav = document.querySelector('.site-nav');
+  const offset = (nav ? nav.getBoundingClientRect().height : 0) + 24;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'auto' });
+}
+
+window.addEventListener('load', () => {
+  alignHashTarget();
+  if (document.fonts) {
+    document.fonts.ready.then(alignHashTarget);
+  }
+});
+</script>
+
+</body>
+</html>

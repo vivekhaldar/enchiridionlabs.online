@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HarnessC Is Open Source &mdash; Enchiridion Labs</title>
+<meta name="description" content="HarnessC is an open-source experiment in compiling task specifications into specialized AI harnesses that can run cheaper and perform better on narrow workflows than general agents.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-warm: #0d0e13;
+    --surface: #131419;
+    --surface-hover: #1a1b22;
+    --surface-border: rgba(240, 237, 232, 0.06);
+    --surface-border-hover: rgba(0, 212, 161, 0.25);
+
+    --text: #f0ede8;
+    --text-secondary: #b0ada6;
+    --text-muted: #6a6875;
+    --text-faint: #5e5d68;
+
+    --jade: #00D4A1;
+    --jade-dim: rgba(0, 212, 161, 0.12);
+    --jade-glow: rgba(0, 212, 161, 0.08);
+    --amber: #E8A94A;
+    --amber-dim: rgba(232, 169, 74, 0.12);
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    font-size: 17px;
+    scroll-behavior: smooth;
+    scroll-padding-top: 10rem;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    line-height: 1.72;
+    font-weight: 300;
+    background:
+      linear-gradient(180deg, rgba(0, 212, 161, 0.035), transparent 18rem),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--jade);
+    color: var(--bg);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.018;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  a {
+    color: var(--jade);
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  a:hover { color: var(--text); }
+
+  .site-nav {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    background: rgba(10, 11, 15, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .site-nav-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .site-nav a {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .site-nav a:hover { color: var(--jade); }
+
+  .site-nav-links {
+    display: flex;
+    gap: 1.2rem;
+    list-style: none;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 3.35rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.03;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .subtitle {
+    font-size: 1.18rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    max-width: 700px;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+
+  .byline {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  .byline a { color: var(--jade); text-decoration: none; font-weight: 500; }
+  .byline a:hover { color: var(--text); }
+
+  .hero-card {
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    background: var(--jade-dim);
+    padding: 1.25rem;
+  }
+
+  .hero-card-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.8rem;
+  }
+
+  .hero-card p {
+    font-size: 0.94rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-card p:last-child { margin-bottom: 0; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 780px);
+    gap: 4rem;
+    align-items: start;
+    margin-top: 3rem;
+    min-width: 0;
+  }
+
+  .layout > *,
+  .content {
+    min-width: 0;
+  }
+
+  .toc {
+    position: sticky;
+    top: 5rem;
+    padding-top: 0.25rem;
+  }
+
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc li { margin-bottom: 0.45rem; }
+
+  .toc a {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+
+  .toc a:hover { color: var(--jade); }
+
+  .content p { margin-bottom: 1rem; }
+
+  .content section[id] { scroll-margin-top: 10rem; }
+
+  .content strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    color: var(--jade);
+    border: 1px solid var(--surface-border);
+  }
+
+  .content em { color: var(--text-secondary); }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: 0;
+    line-height: 1.2;
+    color: var(--text);
+    margin-top: 3.25rem;
+    margin-bottom: 1rem;
+  }
+
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--surface-border);
+    margin: 3rem 0;
+  }
+
+  .summary-box {
+    background: var(--jade-dim);
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    padding: 1.35rem 1.5rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .summary-box p {
+    font-size: 0.96rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+
+  .summary-box p:last-child { margin-bottom: 0; }
+
+  .claim-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 1.5rem 0 1.25rem;
+  }
+
+  .claim-card {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1.1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .claim-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--text-muted);
+    opacity: 0.65;
+  }
+
+  .claim-card.highlight {
+    border-color: rgba(0, 212, 161, 0.28);
+    background: linear-gradient(180deg, rgba(0, 212, 161, 0.09), var(--surface));
+  }
+
+  .claim-card.highlight::before {
+    background: var(--jade);
+    opacity: 1;
+  }
+
+  .claim-label {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.65rem;
+  }
+
+  .claim-card.highlight .claim-label { color: var(--jade); }
+
+  .claim-card h3 {
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.2;
+    margin: 0 0 0.45rem;
+  }
+
+  .claim-card p {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .diagram-layer {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1rem 1.2rem;
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: baseline;
+  }
+
+  .diagram-layer h3 {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: var(--jade);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .diagram-layer p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .inventory {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .inventory-item {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 1rem 1.1rem;
+  }
+
+  .inventory-item h3 {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+  }
+
+  .inventory-item p {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  .metrics {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.35rem 0 1.5rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: block;
+  }
+
+  .metrics thead,
+  .metrics tbody,
+  .metrics tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .metrics th,
+  .metrics td {
+    border-bottom: 1px solid var(--surface-border);
+    padding: 0.72rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .metrics th {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--jade);
+    background: rgba(0, 212, 161, 0.06);
+    font-weight: 500;
+  }
+
+  .metrics td {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  .metrics tr:last-child td { border-bottom: none; }
+
+  .metric-task {
+    font-family: var(--font-mono);
+    color: var(--text);
+    font-size: 0.78rem;
+  }
+
+  .note {
+    border-left: 3px solid var(--amber);
+    padding: 0.8rem 1.2rem;
+    background: var(--amber-dim);
+    border-radius: 0 6px 6px 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .note p {
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    margin-bottom: 0;
+  }
+
+  .process {
+    list-style: none;
+    counter-reset: process;
+    padding: 0;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .process li {
+    counter-increment: process;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(240, 237, 232, 0.05);
+    padding: 0.75rem 0 0.8rem 2.6rem;
+    position: relative;
+  }
+
+  .process li::before {
+    content: counter(process);
+    position: absolute;
+    left: 0;
+    top: 0.82rem;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: var(--jade);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .process strong { color: var(--text); }
+
+  .source-list {
+    list-style: none;
+    margin: 1.4rem 0 2rem;
+    padding: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .source-list li {
+    border-bottom: 1px solid rgba(240, 237, 232, 0.05);
+    padding-bottom: 0.55rem;
+    color: var(--text-secondary);
+  }
+
+  .source-list span {
+    display: inline-block;
+    min-width: 5.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .cta {
+    margin-top: 3rem;
+    padding: 2rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .cta h2 {
+    margin-top: 0;
+    margin-bottom: 0.55rem;
+  }
+
+  .cta p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .cta-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+
+  .button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-hover);
+  }
+
+  .button-link.primary {
+    background: var(--jade);
+    color: var(--bg);
+    border-color: var(--jade);
+    font-weight: 500;
+  }
+
+  .button-link:hover {
+    color: var(--text);
+    border-color: var(--surface-border-hover);
+  }
+
+  .button-link.primary:hover { color: var(--bg); }
+
+  @media (max-width: 920px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .hero-card { max-width: 36rem; }
+
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .toc {
+      position: static;
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 1.25rem;
+    }
+
+    .toc ol {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 1rem;
+    }
+
+    .toc li { margin-bottom: 0; }
+  }
+
+  @media (max-width: 760px) {
+    .metrics {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .metrics thead,
+    .metrics tbody,
+    .metrics tr {
+      min-width: 44rem;
+    }
+  }
+
+  @media (max-width: 680px) {
+    html {
+      font-size: 16px;
+      scroll-padding-top: 14rem;
+    }
+
+    .content section[id] { scroll-margin-top: 14rem; }
+
+    .site-nav-inner {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .site-nav-links {
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .page { padding: 2.4rem 1rem 4rem; }
+
+    h1 { font-size: 2.2rem; }
+
+    .claim-grid,
+    .inventory {
+      grid-template-columns: 1fr;
+    }
+
+    .diagram-layer {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+    }
+
+    .cta { padding: 1.5rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="/">&larr; Enchiridion Labs</a>
+    <ul class="site-nav-links">
+      <li><a href="#cost">Cost</a></li>
+      <li><a href="#compiler">Compiler</a></li>
+      <li><a href="#repo">Repo</a></li>
+      <li><a href="#evidence">Evidence</a></li>
+      <li><a href="#limits">Limits</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Open Source</div>
+      <h1>HarnessC Is Open Source</h1>
+      <p class="subtitle">Compile a task specification once, then run a narrow, auditable harness that can use cheaper models and still perform better on the target workflow.</p>
+      <p class="byline">By <a href="https://vivekhaldar.com">Vivek Haldar</a> / <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; July 2026</p>
+    </div>
+    <aside class="hero-card" aria-label="Core claim">
+      <div class="hero-card-label">Core Claim</div>
+      <p><code>harnessc</code> compiles a task specification into a frozen specialized harness.</p>
+      <p>Specialization can buy both sides at once: lower runtime cost and higher task performance.</p>
+    </aside>
+  </header>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-title">On This Page</div>
+      <ol>
+        <li><a href="#cost">The Cost Problem</a></li>
+        <li><a href="#compiler">Why A Harness Compiler?</a></li>
+        <li><a href="#repo">What Went Open Source</a></li>
+        <li><a href="#pipeline">The Pipeline</a></li>
+        <li><a href="#evidence">Evidence So Far</a></li>
+        <li><a href="#limits">Where It Fits</a></li>
+        <li><a href="#try">Try It</a></li>
+      </ol>
+    </aside>
+
+    <article class="content">
+      <section id="cost">
+        <h2>The Cost Problem</h2>
+        <div class="summary-box">
+          <p>Frontier agents can do impressive work. The bill becomes harder to defend when repeated business workflows pay frontier-agent runtime costs on every case.</p>
+          <p>Model routing is the common first move: keep expensive models on planning and give smaller models the easy steps. That helps, but each case still does too much live planning.</p>
+        </div>
+        <p>A better answer changes the shape of the computation. A large slice of enterprise work sits between deterministic workflow and open-ended research. It is repetitive procedural work with a little local ambiguity: an insurance claim, a room booking, an appointment change, an airline rebooking, an HR intake. The process is known. The allowed tools are known. The policy gates are known. The inputs still arrive as messy natural language.</p>
+        <p>This is where specialized harnesses matter. The harness carries the stable structure: state, transitions, tool gates, output contracts, audit events, retries, and failure states. The model handles the local judgment slots where language understanding or fuzzy mapping earns its keep. Because the runtime is narrower, cheaper models can often do the work more accurately than a broad agent solving the whole case live.</p>
+        <div class="claim-grid" aria-label="Cost strategy comparison">
+          <div class="claim-card">
+            <div class="claim-label">General Agent</div>
+            <h3>Reason Every Time</h3>
+            <p>Strong runtime model, broad tool surface, broad context, improvised plan, expensive per case.</p>
+          </div>
+          <div class="claim-card">
+            <div class="claim-label">Model Routing</div>
+            <h3>Route Each Step</h3>
+            <p>Better model portfolio, but the case still begins as a live planning and decomposition problem.</p>
+          </div>
+          <div class="claim-card highlight">
+            <div class="claim-label">Compiled Harness</div>
+            <h3>Run Cheaper, Score Higher</h3>
+            <p>Spend strong-model effort at build time, freeze the task runtime, then execute cheaply and repeatedly with tighter task performance.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="compiler">
+        <h2>Why A Harness Compiler?</h2>
+        <p><a href="specialized-harness-engineering.html">Specialized Harness Engineering</a> argued for the core separation: the model supplies local judgment; the harness supplies structure. <code>harnessc</code> asks the next question: can that harness itself be generated from a task specification?</p>
+        <p>The compiler analogy is practical. At compile time, a frontier coding agent can read the SOPs, examples, tool schemas, rubrics, counterexamples, and representation notes. It can spend tokens profiling the task, drafting a declarative spec, writing narrow judgment prompts, inspecting traces, and proposing fixes. That cost is paid once per harness version.</p>
+        <p>At runtime, the frozen harness handles individual cases with a smaller surface area. The workflow becomes a constrained runtime with typed state, deterministic gates, declared model slots, preserved traces, and task-level evals. Smaller models get a better-shaped problem, so the system can be both cheaper and more accurate.</p>
+        <div class="note">
+          <p>The bet is simple: spend more intelligence while compiling the harness so each runtime case can be cheaper, more accurate, more stable, and easier to audit.</p>
+        </div>
+      </section>
+
+      <section id="repo">
+        <h2>What Went Open Source</h2>
+        <p>The repo is <a href="https://github.com/vivekhaldar/harnessc"><code>vivekhaldar/harnessc</code></a>, released under Apache-2.0. It is a working research repo for compiling and evaluating specialized task harnesses from task specifications. It is still a repo workflow rather than a hosted product or polished SDK.</p>
+        <div class="inventory">
+          <div class="inventory-item">
+            <h3>Task Packets</h3>
+            <p>SOPs, policies, tools, fixtures, train/dev/holdout examples, counterexamples, rubrics, and representation notes.</p>
+          </div>
+          <div class="inventory-item">
+            <h3>HarnessSpec</h3>
+            <p>A declarative IR for slots, states, transitions, tool gates, judgment slots, context policy, audit events, and claims.</p>
+          </div>
+          <div class="inventory-item">
+            <h3>Kernel Runtime</h3>
+            <p>Policy-free execution of specs: state merge, controller transitions, tool gateway, context assembly, model routing, and traces.</p>
+          </div>
+          <div class="inventory-item">
+            <h3>Validator Wall</h3>
+            <p>Hard gates for schema, literals, task leakage, purity, affordances, coverage, secrets, and over-broad claims.</p>
+          </div>
+          <div class="inventory-item">
+            <h3>Eval Gauntlet</h3>
+            <p>Split evals, genericity perturbations, adversarial sessions, stateful sandboxes, exact tool-argument scoring, and baseline economics.</p>
+          </div>
+          <div class="inventory-item">
+            <h3>Climber</h3>
+            <p>A trace-driven mutation loop that proposes scoped fixes and keeps them only if the regression gate measures improvement.</p>
+          </div>
+        </div>
+        <p>The important design move is that generated task-specific control code is not trusted. Structural behavior lives in a shared kernel and declarative spec. Generated surfaces are constrained to data and typed judgment slots, with the wall and gauntlet acting as enforcement.</p>
+      </section>
+
+      <section id="pipeline">
+        <h2>The Pipeline</h2>
+        <p>A useful harness starts with a concrete task specification instead of an architecture diagram. The repo workflow turns that specification into a candidate runtime, then tries hard to break it before making any claim.</p>
+        <div class="diagram">
+          <div class="diagram-layer">
+            <h3>Source</h3>
+            <p>Task specification: SOPs, tools, examples, rubrics, counterexamples, fixtures, and representation limits.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Compiler Backend</h3>
+            <p>A headless coding agent drafts the <code>HarnessSpec</code>, prompt slots, and pure functions from the packet.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Type System</h3>
+            <p>The validator wall rejects example memorization, undeclared affordances, impure functions, kernel/task boundary leaks, and over-claims.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Target VM</h3>
+            <p>The policy-free kernel runs the spec: state, transitions, gates, tools, model calls, costs, latency, and trace emission.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Test Suite</h3>
+            <p>The gauntlet scores splits, generated perturbations, adversarial sessions, stateful sandboxes, exact tool arguments, and general-agent baselines.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Optimizer</h3>
+            <p>The climber reads failing traces, proposes one scoped mutation, and keeps it only if no split regresses.</p>
+          </div>
+          <div class="diagram-layer">
+            <h3>Artifact</h3>
+            <p>A frozen harness with a claim, manifest, traces, costs, and known residuals that stay visible rather than being swept away.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence">
+        <h2>Evidence So Far</h2>
+        <p>The first numbers are local dev-split comparisons. They use the same task packets, fixture tools, rubrics, and strict output metrics for the compiled harness and a headless general-agent baseline. The pattern is the one the project is trying to prove out: lower runtime cost with higher exact-contract performance on narrow tasks.</p>
+        <table class="metrics" aria-label="Early harnessc evidence">
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Harness</th>
+              <th>Harness Cost</th>
+              <th>General Agent</th>
+              <th>Agent Cost</th>
+              <th>Runtime Advantage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="metric-task">dangerous_goods</span></td>
+              <td>6/6</td>
+              <td>$0.0000</td>
+              <td>4/6</td>
+              <td>$0.0778</td>
+              <td>Deterministic / no model cost</td>
+            </tr>
+            <tr>
+              <td><span class="metric-task">fnol_auto_insurance</span></td>
+              <td>3/3</td>
+              <td>$0.0067</td>
+              <td>0/3</td>
+              <td>$0.1366</td>
+              <td>~20.4x cheaper</td>
+            </tr>
+            <tr>
+              <td><span class="metric-task">eva_airline_rebook</span></td>
+              <td>3/3</td>
+              <td>$0.0108</td>
+              <td>0/3</td>
+              <td>$0.0982</td>
+              <td>~9.1x cheaper</td>
+            </tr>
+            <tr>
+              <td><span class="metric-task">eva_medical_hr_fmla</span></td>
+              <td>3/3</td>
+              <td>$0.0113</td>
+              <td>1/3</td>
+              <td>$0.1185</td>
+              <td>~10.5x cheaper</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <p>Read these as local harness evidence, not a universal benchmark. The baseline is intentionally strict: if a general agent misses the exact state, tool argument, gate contract, or output normalization, it fails. That exactness is part of the product claim, because enterprise workflows care about the contract as much as the prose.</p>
+        </div>
+        <p>The repo also preserves failures. A simulator-found confirmation hole in the airline harness remains visible as a counterexample. The climber can already fix single-artifact clusters and reject regressions, but coordinated spec-plus-prompt mutations are still the main research gap.</p>
+      </section>
+
+      <section id="limits">
+        <h2>Where It Fits</h2>
+        <p><code>harnessc</code> is aimed at tasks with a recognizable skeleton and messy language at the edges. It is a good fit when the organization has an SOP, policy, rubric, or allowed tool sequence; the input is still natural language; some actions are irreversible or audit-sensitive; and the desired output contract is strict.</p>
+        <p>Open-ended research, one-off strategy work, and unstable processes still belong with general-purpose agents. Repeated procedural work deserves a narrower runtime. The point is to stop paying for generality when the task does not need it.</p>
+        <ol class="process">
+          <li><strong>Use general agents</strong> when the problem is exploratory, broad, or genuinely novel.</li>
+          <li><strong>Use model routing</strong> when the task is broad but has separable subtasks with different model needs.</li>
+          <li><strong>Use compiled harnesses</strong> when the task family repeats, has policy gates, and rewards exact contracts.</li>
+        </ol>
+      </section>
+
+      <section id="try">
+        <h2>Try It</h2>
+        <p>The fastest way to understand the repo is to read the README, run the existing checks, then inspect one task packet and one generated harness side by side. The core question to bring is practical: what repetitive task in your world deserves a frozen runtime instead of a fresh general-agent plan every time?</p>
+        <ul class="source-list">
+          <li><span>Repo</span><a href="https://github.com/vivekhaldar/harnessc">vivekhaldar/harnessc</a></li>
+          <li><span>Video</span><a href="https://youtu.be/Un6VT0KYK50">AI Cost Is a Harness Problem</a></li>
+          <li><span>Thesis</span><a href="specialized-harness-engineering.html">Specialized Harness Engineering</a></li>
+        </ul>
+      </section>
+
+      <div class="cta">
+        <h2>Compile Your Specialized Harness</h2>
+        <p>Bring a real task specification: SOPs, tools, examples, rubrics, and counterexamples. HarnessC is an attempt to turn that into a runtime that is cheaper, narrower, and better at the job.</p>
+        <div class="cta-links">
+          <a class="button-link primary" href="https://github.com/vivekhaldar/harnessc">View HarnessC</a>
+          <a class="button-link" href="https://youtu.be/Un6VT0KYK50">Watch The Video</a>
+          <a class="button-link" href="specialized-harness-engineering.html">Read The Field Guide</a>
+          <a class="button-link" href="/">Back To The Lab</a>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+
+<script>
+function alignHashTarget() {
+  if (!window.location.hash) return;
+  const target = document.querySelector(window.location.hash);
+  if (!target) return;
+  const nav = document.querySelector('.site-nav');
+  const offset = (nav ? nav.getBoundingClientRect().height : 0) + 24;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'auto' });
+}
+
+window.addEventListener('load', () => {
+  alignHashTarget();
+  if (document.fonts) {
+    document.fonts.ready.then(alignHashTarget);
+  }
+});
+</script>
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "5afb8902e5754a36970c683b83c6bec4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

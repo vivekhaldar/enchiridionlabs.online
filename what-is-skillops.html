@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillOps: The Missing Operating Layer for Agent Skills &mdash; Enchiridion Labs</title>
+<meta name="description" content="SkillOps is the operating layer for the agent skills a company depends on, giving them a lifecycle and analytics that distinguish usage from efficacy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-warm: #0d0e13;
+    --surface: #131419;
+    --surface-hover: #1a1b22;
+    --surface-border: rgba(240, 237, 232, 0.06);
+    --surface-border-hover: rgba(0, 212, 161, 0.25);
+
+    --text: #f0ede8;
+    --text-secondary: #b0ada6;
+    --text-muted: #6a6875;
+    --text-faint: #5e5d68;
+
+    --jade: #00d4a1;
+    --jade-dim: rgba(0, 212, 161, 0.12);
+    --jade-glow: rgba(0, 212, 161, 0.08);
+    --amber: #e8a94a;
+    --amber-dim: rgba(232, 169, 74, 0.12);
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    font-size: 17px;
+    scroll-behavior: smooth;
+    scroll-padding-top: 10rem;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    line-height: 1.72;
+    font-weight: 300;
+    background:
+      radial-gradient(circle at 78% 6%, rgba(0, 212, 161, 0.065), transparent 22rem),
+      linear-gradient(180deg, rgba(0, 212, 161, 0.035), transparent 18rem),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--jade); color: var(--bg); }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.018;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  a {
+    color: var(--jade);
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  a:hover { color: var(--text); }
+
+  .site-nav {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    background: rgba(10, 11, 15, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .site-nav-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .site-nav a {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .site-nav a:hover { color: var(--jade); }
+
+  .site-nav-links {
+    display: flex;
+    gap: 1.2rem;
+    list-style: none;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.7rem, 6vw, 4.6rem);
+    font-weight: 400;
+    font-optical-sizing: auto;
+    letter-spacing: -0.025em;
+    line-height: 0.98;
+    color: var(--text);
+    max-width: 760px;
+    margin-bottom: 1.35rem;
+  }
+
+  .dek {
+    font-size: 1.18rem;
+    color: var(--text-secondary);
+    max-width: 720px;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+
+  .dek strong { color: var(--text); font-weight: 500; }
+
+  .byline { font-size: 0.88rem; color: var(--text-muted); }
+  .byline a { color: var(--jade); font-weight: 500; }
+
+  .lifecycle-card {
+    border: 1px solid rgba(0, 212, 161, 0.22);
+    border-radius: 8px;
+    background: var(--jade-dim);
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lifecycle-card::after {
+    content: '';
+    position: absolute;
+    width: 10rem;
+    height: 10rem;
+    border: 1px solid rgba(0, 212, 161, 0.12);
+    border-radius: 50%;
+    right: -5rem;
+    bottom: -6rem;
+  }
+
+  .lifecycle-card-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.9rem;
+  }
+
+  .lifecycle-card ol {
+    list-style: none;
+    counter-reset: lifecycle;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .lifecycle-card li {
+    counter-increment: lifecycle;
+    display: grid;
+    grid-template-columns: 1.7rem 1fr;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+  }
+
+  .lifecycle-card li::before {
+    content: counter(lifecycle, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--jade);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 14rem minmax(0, 780px);
+    gap: 4rem;
+    align-items: start;
+    margin-top: 3rem;
+    min-width: 0;
+  }
+
+  .layout > *, .content { min-width: 0; }
+
+  .toc { position: sticky; top: 5rem; padding-top: 0.25rem; }
+
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol { list-style: none; }
+  .toc li { margin-bottom: 0.45rem; }
+
+  .toc a {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+
+  .toc a:hover { color: var(--jade); }
+
+  .content p { margin-bottom: 1rem; }
+  .content section[id] { scroll-margin-top: 10rem; }
+  .content strong { color: var(--text); font-weight: 600; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    color: var(--jade);
+    border: 1px solid var(--surface-border);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 500;
+    font-optical-sizing: auto;
+    line-height: 1.2;
+    color: var(--text);
+    margin-top: 3.25rem;
+    margin-bottom: 1rem;
+  }
+
+  h2:first-child { margin-top: 0; }
+
+  .lifecycle-line {
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+    font-style: italic;
+    color: var(--text);
+    padding: 1.3rem 1.5rem;
+    margin: 1.5rem 0 1.75rem;
+    border: 1px solid rgba(0, 212, 161, 0.2);
+    border-radius: 8px;
+    background: var(--jade-dim);
+  }
+
+  .signal-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .signal-list li {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 0.9rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+
+  .signal-list strong {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.25rem;
+  }
+
+  .manifesto {
+    list-style: none;
+    counter-reset: principle;
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.5rem 0 2rem;
+  }
+
+  .manifesto li {
+    counter-increment: principle;
+    display: grid;
+    grid-template-columns: 2.8rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    border-top: 1px solid var(--surface-border);
+    padding: 1rem 0 0.25rem;
+    color: var(--text-secondary);
+  }
+
+  .manifesto li::before {
+    content: counter(principle, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--amber);
+    padding-top: 0.2rem;
+  }
+
+  .manifesto strong { color: var(--text); }
+
+  .closing {
+    margin-top: 3rem;
+    padding: 2rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .closing p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .closing-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--jade);
+    margin-bottom: 0.6rem;
+  }
+
+  .closing h2 { margin: 0 0 0.55rem; }
+
+  .closing-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+
+  .button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-hover);
+  }
+
+  .button-link.primary {
+    background: var(--jade);
+    color: var(--bg);
+    border-color: var(--jade);
+    font-weight: 500;
+  }
+
+  .button-link:hover { color: var(--text); border-color: var(--surface-border-hover); }
+  .button-link.primary:hover { color: var(--bg); }
+
+  @media (max-width: 920px) {
+    .hero { grid-template-columns: 1fr; gap: 1.5rem; }
+    .lifecycle-card { max-width: 36rem; }
+    .layout { grid-template-columns: 1fr; gap: 2rem; }
+    .toc {
+      position: static;
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 1.25rem;
+    }
+    .toc ol { display: flex; flex-wrap: wrap; gap: 0.45rem 1rem; }
+    .toc li { margin-bottom: 0; }
+  }
+
+  @media (max-width: 680px) {
+    html { font-size: 16px; scroll-padding-top: 14rem; }
+    .content section[id] { scroll-margin-top: 14rem; }
+    .site-nav-inner { align-items: flex-start; flex-direction: column; gap: 0.75rem; }
+    .site-nav-links { flex-wrap: wrap; gap: 0.8rem; }
+    .page { padding: 2.4rem 1rem 4rem; }
+    h1 { font-size: 2.55rem; }
+    .signal-list { grid-template-columns: 1fr; }
+    .manifesto li { grid-template-columns: 2.2rem minmax(0, 1fr); gap: 0.7rem; }
+    .closing { padding: 1.5rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="/">&larr; Enchiridion Labs</a>
+    <ul class="site-nav-links">
+      <li><a href="#gap">The Gap</a></li>
+      <li><a href="#lifecycle">Lifecycle</a></li>
+      <li><a href="#analytics">Analytics</a></li>
+      <li><a href="#manifesto">Manifesto</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="page">
+  <header class="hero">
+    <div>
+      <div class="eyebrow">Manifesto / SkillOps</div>
+      <h1>SkillOps: The Missing Operating Layer for Agent Skills</h1>
+      <p class="dek"><strong>SkillOps is the operating layer for the agent skills a company depends on.</strong> It gives those skills a lifecycle&mdash;<strong>author, approve, distribute, observe, improve</strong>&mdash;and analytics that distinguish <strong>usage</strong> from <strong>efficacy</strong>. The result is an organization that can turn its best ways of working into workflows agents can safely reuse and continuously improve.</p>
+      <p class="byline">By <a href="https://vivekhaldar.com">Vivek Haldar</a> / <a href="https://enchiridionlabs.online">Enchiridion Labs</a> &middot; July 2026</p>
+    </div>
+    <aside class="lifecycle-card" aria-label="Skill lifecycle">
+      <div class="lifecycle-card-label">The Operating Loop</div>
+      <ol>
+        <li>Author</li>
+        <li>Review &amp; approve</li>
+        <li>Distribute</li>
+        <li>Observe</li>
+        <li>Improve</li>
+      </ol>
+    </aside>
+  </header>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-title">On This Page</div>
+      <ol>
+        <li><a href="#gap">The Gap SkillOps Closes</a></li>
+        <li><a href="#lifecycle">Skill Lifecycle</a></li>
+        <li><a href="#analytics">Analytics</a></li>
+        <li><a href="#vendor-neutral">Vendor Neutrality</a></li>
+        <li><a href="#benefits">Who Benefits</a></li>
+        <li><a href="#manifesto">The Manifesto</a></li>
+        <li><a href="#work-ahead">The Work Ahead</a></li>
+      </ol>
+    </aside>
+
+    <article class="content">
+      <p>An agent skill is an executable standard operating procedure: instructions, references, tools, and sometimes scripts that help an agent do a recurring job well. The <a href="https://agentskills.io/specification">Agent Skills specification</a> defines a portable format centered on <code>SKILL.md</code>; in practice, a skill might encode a finance-close checklist, a support playbook, an engineering release procedure, or the hard-won knowledge of a domain expert.</p>
+
+      <p>Skills make agents more useful because they start with <strong>a way of working</strong>, not just generic capability. <strong>They have also become one of the easiest and most common ways for organizations to build agents around their own processes and knowledge.</strong> But creating a skill is the easy part.</p>
+
+      <p>The hard part starts when a company has ten skills&mdash;or a hundred. Who owns each one? Which version is approved? Who can change it? How does the right person get the current version in Claude, OpenAI, Cursor, Codex, or the next agent host? Is the skill merely available, or was it used? Did it actually help someone complete the work?</p>
+
+      <section id="gap">
+        <h2>The gap SkillOps closes</h2>
+        <p>SkillOps began with a simple observation: companies were using skills to encode internal workflows and knowledge for agents built on platforms such as Claude and OpenAI. Yet the surrounding operating model was missing. There was no coherent way to <strong>share, manage, evolve, and measure</strong> those skills.</p>
+
+        <p>Current agent stacks are good at creating and running skills. They offer far less for the skill's life after it becomes important. Useful workflows end up in personal folders. Copies drift. Domain experts cannot safely improve the process they know best. Leaders cannot tell the difference between a skill that was installed, a skill that was read, and a skill that produced a valuable result.</p>
+
+        <p>SkillOps closes that gap. It treats a skill not as a disposable prompt or a file on someone's laptop, but as a <strong>governed, measurable workflow asset</strong>.</p>
+      </section>
+
+      <section id="lifecycle">
+        <h2>Skill Lifecycle</h2>
+        <p>A skill should have a lifecycle, not just a file path:</p>
+
+        <p class="lifecycle-line"><strong>Author &rarr; review &rarr; approve &rarr; serve &rarr; observe &rarr; improve.</strong></p>
+
+        <p><strong>Author.</strong> A domain expert should be able to capture or improve a workflow without becoming a Git expert. The user-facing model is a document: describe the process, attach the necessary references, and test a draft.</p>
+
+        <p><strong>Review, suggest changes, and approve.</strong> A proposed change is based on a known version and shown as a plain-language diff. People in the organization other than the original author should be able to suggest changes, and the accountable owner&mdash;or any required technical, security, or compliance reviewer&mdash;can then approve it, request changes, or reject it. Approval creates an immutable version: a recorded decision, not merely an editor save.</p>
+
+        <p><strong>Serve.</strong> The approved version reaches only the people and agents authorized to use it. That might happen through a native host integration, a package, a managed gateway, or a controlled handoff. The transport can change; the <strong>chain of custody</strong> should not.</p>
+
+        <p><strong>Observe and improve.</strong> Owners see detailed analytics on adoption, failure modes, feedback, and outcome evidence. They can compare versions, fix the workflow, roll back a regression, or retire an obsolete skill.</p>
+
+        <p>This is the distinction that matters: <strong>easy contribution, accountable release.</strong> People with relevant knowledge should be able to suggest an improvement. Releasing that improvement to others should require review appropriate to its risk and scope.</p>
+      </section>
+
+      <section id="analytics">
+        <h2>Analytics for deep observability and evolution</h2>
+        <p>Analytics is central to SkillOps because it completes the learning loop. Without it, a company cannot tell whether its skills are helping&mdash;or merely accumulating.</p>
+
+        <p>The key is to be honest about what the data means. A skill can be available without being discovered; discovered without being read; read without being selected; selected without being followed; and followed without producing a good result. Calling all of that “usage” creates false confidence.</p>
+
+        <p>SkillOps separates the signals:</p>
+
+        <ul class="signal-list">
+          <li><strong>Served:</strong> an authorized client could access the skill.</li>
+          <li><strong>Read:</strong> the host or adapter fetched its instructions.</li>
+          <li><strong>Activated:</strong> the skill was selected for a task.</li>
+          <li><strong>Completed:</strong> the workflow reached a terminal state.</li>
+          <li><strong>Evidence-backed:</strong> a test, artifact, ticket, or external system supports the result.</li>
+          <li><strong>User-rated or business-observed:</strong> a person or downstream system confirms that the result mattered.</li>
+        </ul>
+
+        <p>The first two signals show availability and use. The later signals show efficacy. <strong>Reads are not value.</strong> A trustworthy system reports what it knows, what it infers, and what remains unknown.</p>
+
+        <p>That distinction turns analytics into an improvement engine. A high read rate and low activation may mean the skill is poorly described or hard to discover. A drop in completion after a release gives an owner a concrete version to inspect. Repeated blockers become a prioritized change request instead of a pile of anecdotes.</p>
+
+        <p><strong>SkillOps measures workflows so workflows can get better.</strong></p>
+      </section>
+
+      <section id="vendor-neutral">
+        <h2>A vendor-neutral system for skills and their lifecycle</h2>
+        <p>SkillOps manages skills as durable operational assets, not as vendor-specific prompts or one-off files. It gives each skill a lifecycle&mdash;author, review, approve, distribute, observe, improve&mdash;so the same governed workflow can be used across any AI stack.</p>
+
+        <p>That means a skill can be created once, approved once, and then delivered to Claude, Codex, OpenAI, Cursor, proprietary agent builders, or whatever comes next without changing the underlying ownership, versioning, or control model. The stack can change; the skill and its lifecycle do not.</p>
+
+        <p>The point is simple: SkillOps is the vendor-neutral layer for managing skills end to end, so organizations can build on any AI platform without losing control of what the skill is, who owns it, which version is approved, or how it improves over time.</p>
+      </section>
+
+      <section id="benefits">
+        <h2>Who benefits</h2>
+        <p><strong>Domain experts</strong> make their knowledge reusable without becoming engineers. <strong>Skill owners</strong> get clear change requests, version history, feedback, and rollback. <strong>Platform and security teams</strong> gain a registry of what exists, who owns it, who may use it, and what changed. <strong>Agent users</strong> receive the intended workflow rather than a stale or conflicting copy.</p>
+
+        <p>For the business, the value compounds. A useful workflow escapes one expert's chat history, spreads safely, improves through use, and preserves operational learning that would otherwise disappear.</p>
+      </section>
+
+      <section id="manifesto">
+        <h2>The SkillOps Manifesto</h2>
+        <ol class="manifesto">
+          <li><span><strong>Skills are operational assets, not disposable prompts.</strong> If a workflow matters enough to reuse, it matters enough to own, version, and improve.</span></li>
+          <li><span><strong>Domain expertise should be easy to contribute.</strong> The people who know the work should not need to become Git experts to evolve it.</span></li>
+          <li><span><strong>Shared changes deserve accountable release.</strong> No one should have to guess which version is approved or who authorized it.</span></li>
+          <li><span><strong>Analytics and observability should drive improvement.</strong> Teams need to see what skills are used, where they fail, and which changes actually make workflows better.</span></li>
+          <li><span><strong>Autonomy needs an operating system.</strong> As agents take on more consequential work, the organization needs more than better models. It needs a reliable way to operate the instructions that guide them.</span></li>
+        </ol>
+      </section>
+
+      <section id="work-ahead">
+        <h2>The work ahead</h2>
+        <p>The future of agents will not be defined only by model intelligence. It will be defined by whether organizations can turn their best ways of working into systems that are safe to share, easy to improve, and possible to trust.</p>
+
+        <p>That requires moving beyond the question, “Can we make an agent do this task?”</p>
+
+        <p>The more durable questions are: “Whose workflow is this? What version are we using? Who approved it? Who can receive it? What happened when it ran? And what should we change next?”</p>
+
+        <p>SkillOps is the discipline built around answering those questions.</p>
+
+        <p>It is how an organization moves from a collection of clever agent instructions to an operating system for institutional capability.</p>
+      </section>
+
+      <aside class="closing" aria-label="Explore SkillOps">
+        <div class="closing-label">From Concept To Practice</div>
+        <h2>Operate the skills your agents depend on.</h2>
+        <p>SkillOps turns governed workflows, distribution, and outcome analytics into a shared operating layer.</p>
+        <div class="closing-links">
+          <a class="button-link primary" href="https://skillops.app">Explore SkillOps</a>
+          <a class="button-link" href="/">Back To The Lab</a>
+        </div>
+      </aside>
+    </article>
+  </div>
+</main>
+
+<script>
+function alignHashTarget() {
+  if (!window.location.hash) return;
+  const target = document.querySelector(window.location.hash);
+  if (!target) return;
+  const nav = document.querySelector('.site-nav');
+  const offset = (nav ? nav.getBoundingClientRect().height : 0) + 24;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'auto' });
+}
+
+window.addEventListener('load', () => {
+  alignHashTarget();
+  if (document.fonts) document.fonts.ready.then(alignHashTarget);
+});
+</script>
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "5afb8902e5754a36970c683b83c6bec4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

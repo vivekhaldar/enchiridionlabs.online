@@ -1267,9 +1267,48 @@ section {
   <div class="wrap">
     <div class="section-label reveal">02 &mdash; Products</div>
     <h2 class="section-title reveal reveal-delay-1">Products</h2>
-    <p class="section-subtitle reveal reveal-delay-2">Three tools that form the infrastructure layer of the AI agent ecosystem.</p>
+    <p class="section-subtitle reveal reveal-delay-2">Three products spanning governed agent skills, procedural execution, and composable MCP infrastructure.</p>
 
     <div class="products-grid">
+
+      <!-- SkillOps -->
+      <div class="product-card reveal">
+        <div>
+          <div class="product-meta"><span class="product-meta-dot"></span> skillops.app</div>
+          <h3 class="product-name">SkillOps</h3>
+          <p class="product-pitch">Govern the skills your agents depend on.</p>
+          <p class="product-desc">The operating layer for authoring, approving, distributing, observing, and improving agent skills&mdash;with analytics that distinguish usage from efficacy.</p>
+          <ul class="product-features">
+            <li>Governed skill registry and version history</li>
+            <li>Review and approval workflows</li>
+            <li>Distribution through a managed MCP gateway</li>
+            <li>Usage and outcome analytics</li>
+            <li>Vendor-neutral skill lifecycle</li>
+          </ul>
+          <a href="https://skillops.app" class="product-link" target="_blank" rel="noopener">
+            Explore SkillOps <span class="product-link-arrow">&rarr;</span>
+          </a>
+        </div>
+        <div class="product-preview">
+<span class="comment"># Governed lifecycle</span>
+
+<span class="keyword">author</span>
+  <span class="pipe">&darr;</span>
+<span class="keyword">approve</span>
+  <span class="pipe">&darr;</span>
+<span class="keyword">distribute</span>
+  <span class="pipe">&darr;</span>
+<span class="keyword">observe</span>
+  <span class="pipe">&darr;</span>
+<span class="keyword">measure</span>
+  <span class="pipe">&darr;</span>
+<span class="keyword">improve</span>
+
+<span class="label">usage:</span> <span class="str">who runs it?</span>
+<span class="label">efficacy:</span>
+  <span class="str">does it work?</span>
+        </div>
+      </div>
 
       <!-- Proceda -->
       <div class="product-card reveal">
@@ -1335,38 +1374,6 @@ section {
         </div>
       </div>
 
-      <!-- mcp-ui-gen -->
-      <div class="product-card reveal">
-        <div>
-          <div class="product-meta"><span class="product-meta-dot"></span> aimyapp.online</div>
-          <h3 class="product-name">AIMyApp</h3>
-          <p class="product-pitch">Turn any website into a ChatGPT App.</p>
-          <p class="product-desc">Three-phase pipeline that discovers user intents, extracts structured content, and generates MCP-compliant servers with interactive UI specs.</p>
-          <ul class="product-features">
-            <li><span style="color:var(--jade)">discover</span> &mdash; LLM analyzes your live website</li>
-            <li><span style="color:var(--jade)">extract</span> &mdash; Structured content extraction</li>
-            <li><span style="color:var(--jade)">generate</span> &mdash; MCP server + UI specs</li>
-            <li>Dual-standard: MCP Apps + OpenAI Apps SDK</li>
-            <li>Works with any site type</li>
-          </ul>
-          <a href="https://aimyapp.online" class="product-link" target="_blank" rel="noopener">
-            Visit aimyapp.online <span class="product-link-arrow">&rarr;</span>
-          </a>
-        </div>
-        <div class="product-preview">
-<span class="comment"># Convert a restaurant site to an MCP App</span>
-
-<span class="cmd">uigen discover</span> <span class="str">https://sunset-cantina.com</span>
-<span class="comment"># -> intents.yaml (browse_menu, view_item...)</span>
-
-<span class="cmd">uigen extract</span> <span class="str">intents.yaml</span>
-<span class="comment"># -> content.json (categories, items, prices)</span>
-
-<span class="cmd">uigen generate</span> <span class="str">intents.yaml content.json</span>
-<span class="comment"># -> MCP server + interactive UI specs</span>
-        </div>
-      </div>
-
     </div>
   </div>
 </section>
@@ -1378,7 +1385,7 @@ section {
   <div class="wrap">
     <div class="section-label reveal">03 &mdash; The Stack</div>
     <h2 class="section-title reveal reveal-delay-1">How It Fits Together</h2>
-    <p class="section-subtitle reveal reveal-delay-2">Our tools form the infrastructure layer &mdash; the part that creates, transforms, and interfaces MCP servers that app frameworks build on.</p>
+    <p class="section-subtitle reveal reveal-delay-2">The infrastructure stack connects agent interfaces, procedural execution, and MCP access to underlying systems.</p>
 
     <div class="stack-visual">
       <div class="stack-endpoint reveal">User / ChatGPT / Claude</div>
@@ -1389,7 +1396,6 @@ section {
           <div class="stack-node-label">Generative UI</div>
           <div class="stack-node-sublabel">Dynamic interfaces for humans</div>
         </div>
-        <div class="stack-product-tag">AIMyApp</div>
       </div>
 
       <div class="stack-connector"><div class="stack-connector-line"></div><div class="stack-connector-dot"></div></div>
@@ -1504,9 +1510,9 @@ section {
     <div class="footer-inner">
       <span class="footer-brand"><img src="logo-white.png" alt="" class="footer-logo-img">Enchiridion Labs &copy; 2026</span>
       <ul class="footer-links">
+        <li><a href="https://skillops.app" target="_blank" rel="noopener">SkillOps</a></li>
         <li><a href="https://sop.run" target="_blank" rel="noopener">Proceda</a></li>
         <li><a href="https://github.com/vivekhaldar/mcpknife" target="_blank" rel="noopener">mcpknife</a></li>
-        <li><a href="https://aimyapp.online" target="_blank" rel="noopener">AIMyApp</a></li>
         <li><a href="harnessc-open-source.html">HarnessC</a></li>
         <li><a href="proceda-voice-sop-driven-voice-agents.html">Proceda Voice</a></li>
         <li><a href="specialized-harness-engineering.html">Harness Engineering</a></li>
